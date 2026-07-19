@@ -9,6 +9,7 @@ Custom Home Assistant integration for adaptive evening dimming, fully managed th
 - **Pause buttons** — create as many as you need, scoped to *all lights* or a group. Each is a switch: **on = pause active**. A light is paused while *any* button covering it is on, so "unpause all" never clears a smaller group's pause. Paused lights freeze mid-dim and resume where they were. Pause states survive restarts.
 - **Presets** — a select with Day / Evening / Night / None. Choosing one applies each light's percentage immediately (minus reduction) and cancels in-flight dimming. Paused lights are left untouched.
 - **Outdoor-light reduction** — from a lux meter **or** a weather-derived estimate (your explicit choice, no silent fallback): above `high_lux` no reduction, below `low_lux` strong reduction, in between medium reduction.
+- **Zones** — group lights into zones (e.g. sections of a restaurant) that dim on their own schedule and/or their own lux sensor. A zone only stores what you override; empty fields inherit the central configuration live. Each zone gets its own dimming switch; lights not in any zone follow the central schedule. A zone's lux sensor drives both its early start and its reduction.
 
 ## Entities
 

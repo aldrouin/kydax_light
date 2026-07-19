@@ -43,6 +43,7 @@ from .const import (
     CONF_STRONG_PCT,
     CONF_WEATHER_ENTITY,
     CONF_WINDOW_MIN,
+    CONF_ZONES,
     DEFAULT_DAY,
     DEFAULT_EVENING,
     DEFAULT_HIGH_LUX,
@@ -236,6 +237,7 @@ class KydaxOptionsFlow(OptionsFlow):
     def __init__(self) -> None:
         self._edit_light: str | None = None
         self._edit_button_id: str | None = None
+        self._edit_zone_id: str | None = None
 
     @property
     def _options(self) -> dict[str, Any]:
@@ -263,7 +265,7 @@ class KydaxOptionsFlow(OptionsFlow):
     ) -> ConfigFlowResult:
         return self.async_show_menu(
             step_id="init",
-            menu_options=["lights", "pause_buttons", "source", "schedule"],
+            menu_options=["lights", "zones", "pause_buttons", "source", "schedule"],
         )
 
     # --- lights ------------------------------------------------------------
@@ -352,7 +354,7 @@ class KydaxOptionsFlow(OptionsFlow):
             for entity_id in removed:
                 lights.pop(entity_id, None)
             options[CONF_LIGHTS] = lights
-            # Drop removed lights from pause-button scopes too.
+            # Drop removed lights from pause-button and zone scopes too.
             options[CONF_PAUSE_BUTTONS] = [
                 {
                     **button,
@@ -361,6 +363,15 @@ class KydaxOptionsFlow(OptionsFlow):
                     ],
                 }
                 for button in options.get(CONF_PAUSE_BUTTONS, [])
+            ]
+            options[CONF_ZONES] = [
+                {
+                    **zone,
+                    "lights": [
+                        e for e in zone.get("lights", []) if e not in removed
+                    ],
+                }
+                for zone in options.get(CONF_ZONES, [])
             ]
             return self._save(options)
 
@@ -371,6 +382,156 @@ class KydaxOptionsFlow(OptionsFlow):
                     vol.Required("lights", default=[]): SelectSelector(
                         SelectSelectorConfig(
                             options=self._light_select_options(),
+                            multiple=True,
+                            mode=SelectSelectorMode.LIST,
+                        )
+                    )
+                }
+            ),
+        )
+
+    # --- zones --------------------------------------------------------------
+
+    def _zone_select_options(self) -> list[SelectOptionDict]:
+        return [
+            SelectOptionDict(value=zone["id"], label=zone["name"])
+            for zone in self._options.get(CONF_ZONES, [])
+        ]
+
+    def _zone_schema(self) -> vol.Schema:
+        managed = list(self._options.get(CONF_LIGHTS, {}))
+        return vol.Schema(
+            {
+                vol.Required("name"): TextSelector(),
+                vol.Required("lights", default=[]): EntitySelector(
+                    EntitySelectorConfig(include_entities=managed, multiple=True)
+                ),
+                vol.Optional(CONF_LUX_ENTITY): EntitySelector(
+                    EntitySelectorConfig(domain="sensor", device_class="illuminance")
+                ),
+                vol.Optional(CONF_OFFSET_MIN): _int_number(0, 360, "min"),
+                vol.Optional(CONF_STEP_MIN): _int_number(1, 60, "min"),
+                vol.Optional(CONF_STEPS): _int_number(1, 60),
+                vol.Optional(CONF_START_LUX): _int_number(0, 20000, "lx"),
+                vol.Optional(CONF_WINDOW_MIN): _int_number(0, 720, "min"),
+            }
+        )
+
+    @staticmethod
+    def _zone_from_input(zone_id: str, user_input: dict[str, Any]) -> dict[str, Any]:
+        """Only submitted override keys are stored; absent keys inherit."""
+        zone = {
+            "id": zone_id,
+            "name": user_input["name"],
+            "lights": user_input.get("lights", []),
+        }
+        for key in (
+            CONF_LUX_ENTITY,
+            CONF_OFFSET_MIN,
+            CONF_STEP_MIN,
+            CONF_STEPS,
+            CONF_START_LUX,
+            CONF_WINDOW_MIN,
+        ):
+            if user_input.get(key) is not None:
+                zone[key] = user_input[key]
+        return zone
+
+    async def async_step_zones(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        menu = ["add_zone"]
+        if self._options.get(CONF_ZONES):
+            menu += ["edit_zone", "remove_zone"]
+        return self.async_show_menu(step_id="zones", menu_options=menu)
+
+    async def async_step_add_zone(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            if not user_input.get("lights"):
+                errors["lights"] = "zone_lights_required"
+            else:
+                options = self._options
+                zones = list(options.get(CONF_ZONES, []))
+                zones.append(self._zone_from_input(uuid4().hex[:8], user_input))
+                options[CONF_ZONES] = zones
+                return self._save(options)
+
+        return self.async_show_form(
+            step_id="add_zone", data_schema=self._zone_schema(), errors=errors
+        )
+
+    async def async_step_edit_zone(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        if user_input is not None:
+            self._edit_zone_id = user_input["zone"]
+            return await self.async_step_edit_zone_form()
+
+        return self.async_show_form(
+            step_id="edit_zone",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("zone"): SelectSelector(
+                        SelectSelectorConfig(
+                            options=self._zone_select_options(),
+                            mode=SelectSelectorMode.DROPDOWN,
+                        )
+                    )
+                }
+            ),
+        )
+
+    async def async_step_edit_zone_form(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        options = self._options
+        zones = list(options.get(CONF_ZONES, []))
+        current = next(
+            (z for z in zones if z["id"] == self._edit_zone_id), None
+        )
+        if current is None:
+            return await self.async_step_zones()
+
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            if not user_input.get("lights"):
+                errors["lights"] = "zone_lights_required"
+            else:
+                updated = self._zone_from_input(current["id"], user_input)
+                options[CONF_ZONES] = [
+                    updated if z["id"] == current["id"] else z for z in zones
+                ]
+                return self._save(options)
+
+        return self.async_show_form(
+            step_id="edit_zone_form",
+            data_schema=self.add_suggested_values_to_schema(
+                self._zone_schema(), current
+            ),
+            errors=errors,
+        )
+
+    async def async_step_remove_zone(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        if user_input is not None:
+            options = self._options
+            removed = set(user_input.get("zones", []))
+            options[CONF_ZONES] = [
+                z for z in options.get(CONF_ZONES, []) if z["id"] not in removed
+            ]
+            return self._save(options)
+
+        return self.async_show_form(
+            step_id="remove_zone",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("zones", default=[]): SelectSelector(
+                        SelectSelectorConfig(
+                            options=self._zone_select_options(),
                             multiple=True,
                             mode=SelectSelectorMode.LIST,
                         )

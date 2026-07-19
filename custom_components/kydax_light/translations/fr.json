@@ -49,7 +49,8 @@
           "lights": "Gérer les lumières",
           "pause_buttons": "Gérer les boutons de pause",
           "source": "Source de luminosité",
-          "schedule": "Horaire et réductions"
+          "schedule": "Horaire et réductions",
+          "zones": "Gérer les zones"
         }
       },
       "lights": {
@@ -146,12 +147,61 @@
           "mid_reduction_pct": "Réduction moyenne",
           "strong_reduction_pct": "Réduction forte"
         }
+      },
+      "zones": {
+        "title": "Gérer les zones",
+        "menu_options": {
+          "add_zone": "Créer une zone",
+          "edit_zone": "Modifier une zone",
+          "remove_zone": "Supprimer des zones"
+        }
+      },
+      "add_zone": {
+        "title": "Créer une zone",
+        "description": "Une zone effectue sa gradation selon son propre horaire. Tout champ laissé vide hérite de la configuration centrale; un capteur de lux de zone fait suivre le départ anticipé et la réduction selon la lumière propre à cette section.",
+        "data": {
+          "name": "Nom",
+          "lights": "Lumières de cette zone",
+          "lux_entity": "Capteur de lux de la zone (optionnel)",
+          "sunset_offset_minutes": "Commencer la gradation avant le coucher (optionnel)",
+          "step_minutes": "Minutes entre les paliers (optionnel)",
+          "steps": "Nombre de paliers (optionnel)",
+          "start_lux": "Départ anticipé sous cette luminosité (optionnel)",
+          "early_window_minutes": "Fenêtre de départ anticipé avant le coucher (optionnel)"
+        }
+      },
+      "edit_zone": {
+        "title": "Modifier une zone",
+        "data": {
+          "zone": "Zone"
+        }
+      },
+      "edit_zone_form": {
+        "title": "Modifier la zone",
+        "description": "Videz un champ pour qu'il hérite de nouveau de la configuration centrale.",
+        "data": {
+          "name": "Nom",
+          "lights": "Lumières de cette zone",
+          "lux_entity": "Capteur de lux de la zone (optionnel)",
+          "sunset_offset_minutes": "Commencer la gradation avant le coucher (optionnel)",
+          "step_minutes": "Minutes entre les paliers (optionnel)",
+          "steps": "Nombre de paliers (optionnel)",
+          "start_lux": "Départ anticipé sous cette luminosité (optionnel)",
+          "early_window_minutes": "Fenêtre de départ anticipé avant le coucher (optionnel)"
+        }
+      },
+      "remove_zone": {
+        "title": "Supprimer des zones",
+        "data": {
+          "zones": "Zones à supprimer"
+        }
       }
     },
     "error": {
       "lux_entity_required": "Un capteur de lux est requis pour ce mode",
       "weather_entity_required": "Une entité météo est requise pour ce mode",
-      "button_lights_required": "Sélectionnez au moins une lumière, ou choisissez toutes les lumières"
+      "button_lights_required": "Sélectionnez au moins une lumière, ou choisissez toutes les lumières",
+      "zone_lights_required": "Sélectionnez au moins une lumière pour la zone"
     }
   },
   "selector": {
@@ -177,6 +227,9 @@
     "switch": {
       "gradation": {
         "name": "Gradation du soir"
+      },
+      "zone_gradation": {
+        "name": "Gradation {zone}"
       }
     },
     "sensor": {

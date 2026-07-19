@@ -49,7 +49,8 @@
           "lights": "Manage lights",
           "pause_buttons": "Manage pause buttons",
           "source": "Light source",
-          "schedule": "Schedule and reductions"
+          "schedule": "Schedule and reductions",
+          "zones": "Manage zones"
         }
       },
       "lights": {
@@ -146,12 +147,61 @@
           "mid_reduction_pct": "Medium reduction",
           "strong_reduction_pct": "Strong reduction"
         }
+      },
+      "zones": {
+        "title": "Manage zones",
+        "menu_options": {
+          "add_zone": "Create a zone",
+          "edit_zone": "Edit a zone",
+          "remove_zone": "Delete zones"
+        }
+      },
+      "add_zone": {
+        "title": "Create a zone",
+        "description": "A zone dims on its own schedule. Any field left empty inherits the central configuration; a zone lux sensor makes early start and reduction follow that section's own light.",
+        "data": {
+          "name": "Name",
+          "lights": "Lights in this zone",
+          "lux_entity": "Zone lux sensor (optional)",
+          "sunset_offset_minutes": "Start dimming before sunset (optional)",
+          "step_minutes": "Minutes between dim steps (optional)",
+          "steps": "Number of dim steps (optional)",
+          "start_lux": "Start early below this illuminance (optional)",
+          "early_window_minutes": "Early start window before sunset (optional)"
+        }
+      },
+      "edit_zone": {
+        "title": "Edit a zone",
+        "data": {
+          "zone": "Zone"
+        }
+      },
+      "edit_zone_form": {
+        "title": "Edit zone",
+        "description": "Clear a field to make it inherit the central configuration again.",
+        "data": {
+          "name": "Name",
+          "lights": "Lights in this zone",
+          "lux_entity": "Zone lux sensor (optional)",
+          "sunset_offset_minutes": "Start dimming before sunset (optional)",
+          "step_minutes": "Minutes between dim steps (optional)",
+          "steps": "Number of dim steps (optional)",
+          "start_lux": "Start early below this illuminance (optional)",
+          "early_window_minutes": "Early start window before sunset (optional)"
+        }
+      },
+      "remove_zone": {
+        "title": "Delete zones",
+        "data": {
+          "zones": "Zones to delete"
+        }
       }
     },
     "error": {
       "lux_entity_required": "A lux sensor is required for this mode",
       "weather_entity_required": "A weather entity is required for this mode",
-      "button_lights_required": "Select at least one light, or choose all lights"
+      "button_lights_required": "Select at least one light, or choose all lights",
+      "zone_lights_required": "Select at least one light for the zone"
     }
   },
   "selector": {
@@ -177,6 +227,9 @@
     "switch": {
       "gradation": {
         "name": "Evening dimming"
+      },
+      "zone_gradation": {
+        "name": "Dimming {zone}"
       }
     },
     "sensor": {

@@ -11,7 +11,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from . import KydaxConfigEntry
-from .const import CONF_PAUSE_BUTTONS
+from .const import CONF_PAUSE_BUTTONS, ZONE_DEFAULT
 from .coordinator import KydaxEngine
 from .entity import KydaxEntity
 
@@ -21,9 +21,12 @@ async def async_setup_entry(
     entry: KydaxConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up the gradation switch and one pause switch per configured button."""
+    """Set up one gradation switch per zone and one pause switch per button."""
     engine = entry.runtime_data
-    entities: list[SwitchEntity] = [KydaxGradationSwitch(engine)]
+    entities: list[SwitchEntity] = [
+        KydaxGradationSwitch(engine, zone.zone_id, zone.name)
+        for zone in engine.zones
+    ]
     entities.extend(
         KydaxPauseSwitch(engine, button)
         for button in entry.options.get(CONF_PAUSE_BUTTONS, [])
@@ -68,34 +71,47 @@ class KydaxPauseSwitch(KydaxEntity, SwitchEntity, RestoreEntity):
 
 
 class KydaxGradationSwitch(KydaxEntity, SwitchEntity):
-    """On while the evening dim session runs; turn off to cancel it."""
+    """On while the zone's evening dim session runs; turn off to cancel it."""
 
-    _attr_translation_key = "gradation"
     _attr_icon = "mdi:weather-sunset-down"
 
-    def __init__(self, engine: KydaxEngine) -> None:
+    def __init__(self, engine: KydaxEngine, zone_id: str, zone_name: str) -> None:
         super().__init__(engine)
-        self._attr_unique_id = f"{engine.entry.entry_id}_gradation"
+        self._zone_id = zone_id
+        if zone_id == ZONE_DEFAULT:
+            # keeps the pre-zones unique_id so history and dashboards survive
+            self._attr_unique_id = f"{engine.entry.entry_id}_gradation"
+            self._attr_translation_key = "gradation"
+        else:
+            self._attr_unique_id = f"{engine.entry.entry_id}_gradation_{zone_id}"
+            self._attr_translation_key = "zone_gradation"
+            self._attr_translation_placeholders = {"zone": zone_name}
 
     @property
     def is_on(self) -> bool:
-        return self._engine.session is not None
+        zone = self._engine.get_zone(self._zone_id)
+        return zone is not None and zone.session is not None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        session = self._engine.session
-        if session is None:
+        zone = self._engine.get_zone(self._zone_id)
+        if zone is None:
             return {}
-        return {
-            "started": session.started.isoformat(),
-            "lights": {
-                entity_id: {"step": p.step, "done": p.done}
-                for entity_id, p in session.lights.items()
-            },
+        attrs: dict[str, Any] = {
+            "lights": zone.lights,
+            "illuminance": zone.lux,
+            "reduction": zone.reduction,
         }
+        if zone.session is not None:
+            attrs["started"] = zone.session.started.isoformat()
+            attrs["progress"] = {
+                entity_id: {"step": p.step, "done": p.done}
+                for entity_id, p in zone.session.lights.items()
+            }
+        return attrs
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        await self._engine.async_start_session()
+        await self._engine.async_start_session(self._zone_id)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        self._engine.cancel_session()
+        self._engine.cancel_session(self._zone_id)

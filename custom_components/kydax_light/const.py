@@ -34,6 +34,16 @@ DEFAULT_LOW_LUX = 800
 DEFAULT_MID_PCT = 10
 DEFAULT_STRONG_PCT = 20
 
+# --- zones ---
+# [{"id": str, "name": str, "lights": [entity_id],
+#   optional overrides: lux_entity, sunset_offset_minutes, step_minutes,
+#   steps, start_lux, early_window_minutes — absent keys inherit the
+#   central configuration}]
+CONF_ZONES = "zones"
+
+# id of the implicit zone holding managed lights not assigned to any zone
+ZONE_DEFAULT = "default"
+
 # --- managed lights & pause buttons ---
 CONF_LIGHTS = "lights"  # {entity_id: {"day": int, "evening": int, "night": int}}
 CONF_PAUSE_BUTTONS = "pause_buttons"  # [{"id": str, "name": str, "all": bool, "lights": [entity_id]}]

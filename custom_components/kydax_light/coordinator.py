@@ -1,11 +1,13 @@
 """Dimming engine for Kydax Light.
 
-Runs on a 60 s heartbeat. Responsibilities:
-- read the configured light source (lux sensor or weather-derived estimate)
-- compute the outdoor-light reduction percentage
-- start the evening dim session (sunset offset, or early on sustained low lux)
-- advance the session one step per interval, freezing paused lights
-- apply presets on demand
+Runs on a 60 s heartbeat. Lights are grouped into zones (plus an implicit
+default zone for unassigned lights); each zone has its own dim session and
+may override the central schedule and lux source — absent overrides inherit
+the central configuration. Per zone, the engine:
+- reads the zone's light source (own lux sensor, else the central source)
+- computes the outdoor-light reduction percentage from the zone's lux
+- starts the evening dim session (sunset offset, or early on sustained low lux)
+- advances the session one step per interval, freezing paused lights
 """
 
 from __future__ import annotations
@@ -47,6 +49,7 @@ from .const import (
     CONF_STRONG_PCT,
     CONF_WEATHER_ENTITY,
     CONF_WINDOW_MIN,
+    CONF_ZONES,
     DEFAULT_HIGH_LUX,
     DEFAULT_LOW_LUX,
     DEFAULT_MID_PCT,
@@ -62,7 +65,7 @@ from .const import (
     PRESET_NONE,
     PRESETS,
     SOURCE_LUX,
-    SOURCE_WEATHER,
+    ZONE_DEFAULT,
     signal_update,
 )
 
@@ -92,6 +95,15 @@ WEATHER_FACTORS = {
 # restarted late in the evening — do not suddenly dim at 23:00).
 AUTOSTART_GRACE = timedelta(hours=1)
 
+# Zone override keys that fall back to the central schedule when absent.
+ZONE_OVERRIDE_KEYS = (
+    CONF_OFFSET_MIN,
+    CONF_STEP_MIN,
+    CONF_STEPS,
+    CONF_START_LUX,
+    CONF_WINDOW_MIN,
+)
+
 
 @dataclass
 class LightProgress:
@@ -111,6 +123,21 @@ class DimSession:
     lights: dict[str, LightProgress] = field(default_factory=dict)
 
 
+@dataclass
+class ZoneState:
+    """A dimming zone: a set of lights with optional config overrides."""
+
+    zone_id: str
+    name: str
+    lights: list[str]
+    config: dict = field(default_factory=dict)
+    lux: float | None = None
+    reduction: int = 0
+    lux_below_since: datetime | None = None
+    last_session_date: date | None = None
+    session: DimSession | None = None
+
+
 class KydaxEngine:
     """Holds all runtime state and drives the managed lights."""
 
@@ -118,14 +145,16 @@ class KydaxEngine:
         self.hass = hass
         self.entry = entry
 
-        self.current_lux: float | None = None
-        self.reduction_pct: int = 0
+        self.current_lux: float | None = None  # central source
+        self.reduction_pct: int = 0  # from central source
         self.active_preset: str = PRESET_NONE
-        self.session: DimSession | None = None
+
+        self.zones: list[ZoneState] = self._build_zones()
+        self._zone_by_light: dict[str, ZoneState] = {
+            entity_id: zone for zone in self.zones for entity_id in zone.lights
+        }
 
         self._paused_buttons: set[str] = set()
-        self._lux_below_since: datetime | None = None
-        self._last_session_date: date | None = None
         self._unsubs: list[CALLBACK_TYPE] = []
 
     # --- configuration accessors -------------------------------------------
@@ -144,7 +173,41 @@ class KydaxEngine:
 
     @property
     def source_mode(self) -> str:
-        return self._opt(CONF_SOURCE_MODE, SOURCE_WEATHER)
+        return self._opt(CONF_SOURCE_MODE, "weather")
+
+    def _build_zones(self) -> list[ZoneState]:
+        """Configured zones in order, then a default zone with the rest.
+
+        A light claimed by several zones belongs to the first one listing it.
+        """
+        zones: list[ZoneState] = []
+        assigned: set[str] = set()
+        for conf in self._opt(CONF_ZONES, []):
+            members = [
+                entity_id
+                for entity_id in conf.get("lights", [])
+                if entity_id in self.lights and entity_id not in assigned
+            ]
+            assigned.update(members)
+            zones.append(
+                ZoneState(
+                    zone_id=conf["id"],
+                    name=conf["name"],
+                    lights=members,
+                    config=conf,
+                )
+            )
+        remaining = [e for e in self.lights if e not in assigned]
+        zones.append(ZoneState(zone_id=ZONE_DEFAULT, name="", lights=remaining))
+        return zones
+
+    def _zone_opt(self, zone: ZoneState, key: str, default):
+        """Zone override if set, else the central value."""
+        value = zone.config.get(key)
+        return value if value is not None else self._opt(key, default)
+
+    def get_zone(self, zone_id: str) -> ZoneState | None:
+        return next((z for z in self.zones if z.zone_id == zone_id), None)
 
     # --- lifecycle ---------------------------------------------------------
 
@@ -178,29 +241,37 @@ class KydaxEngine:
         await self._async_tick(dt_util.now())
 
     async def _async_tick(self, now: datetime) -> None:
-        self._update_lux(now)
-        self._update_reduction()
-        await self._async_maybe_autostart(now)
-        await self._async_advance_session(now)
+        self.current_lux = self._read_central_lux()
+        self.reduction_pct = self._reduction_for(self.current_lux)
+
+        sunset = get_astral_event_date(self.hass, SUN_EVENT_SUNSET, now.date())
+        if sunset is not None:
+            sunset = dt_util.as_local(sunset)
+
+        for zone in self.zones:
+            zone.lux = self._zone_lux(zone)
+            zone.reduction = self._reduction_for(zone.lux)
+            self._update_lux_debounce(zone, now)
+            if sunset is not None:
+                await self._async_maybe_autostart(zone, sunset, now)
+            await self._async_advance_session(zone, now)
+
         self._dispatch()
 
     # --- light source ------------------------------------------------------
 
-    def _update_lux(self, now: datetime) -> None:
+    def _read_central_lux(self) -> float | None:
         if self.source_mode == SOURCE_LUX:
-            self.current_lux = self._read_lux_sensor()
-        else:
-            self.current_lux = self._estimate_lux_from_weather()
+            return self._read_lux_sensor(self._opt(CONF_LUX_ENTITY, None))
+        return self._estimate_lux_from_weather()
 
-        start_lux = self._opt(CONF_START_LUX, DEFAULT_START_LUX)
-        if self.current_lux is not None and self.current_lux < start_lux:
-            if self._lux_below_since is None:
-                self._lux_below_since = now
-        else:
-            self._lux_below_since = None
+    def _zone_lux(self, zone: ZoneState) -> float | None:
+        """The zone's own lux sensor if configured, else the central source."""
+        if zone.config.get(CONF_LUX_ENTITY):
+            return self._read_lux_sensor(zone.config[CONF_LUX_ENTITY])
+        return self.current_lux
 
-    def _read_lux_sensor(self) -> float | None:
-        entity_id = self._opt(CONF_LUX_ENTITY, None)
+    def _read_lux_sensor(self, entity_id: str | None) -> float | None:
         if not entity_id:
             return None
         state = self.hass.states.get(entity_id)
@@ -240,17 +311,22 @@ class KydaxEngine:
 
         return round(base * factor, 1)
 
-    def _update_reduction(self) -> None:
+    def _reduction_for(self, lux: float | None) -> int:
         high = self._opt(CONF_HIGH_LUX, DEFAULT_HIGH_LUX)
         low = self._opt(CONF_LOW_LUX, DEFAULT_LOW_LUX)
-        if self.current_lux is None:
-            self.reduction_pct = 0
-        elif self.current_lux >= high:
-            self.reduction_pct = 0
-        elif self.current_lux <= low:
-            self.reduction_pct = self._opt(CONF_STRONG_PCT, DEFAULT_STRONG_PCT)
+        if lux is None or lux >= high:
+            return 0
+        if lux <= low:
+            return self._opt(CONF_STRONG_PCT, DEFAULT_STRONG_PCT)
+        return self._opt(CONF_MID_PCT, DEFAULT_MID_PCT)
+
+    def _update_lux_debounce(self, zone: ZoneState, now: datetime) -> None:
+        start_lux = self._zone_opt(zone, CONF_START_LUX, DEFAULT_START_LUX)
+        if zone.lux is not None and zone.lux < start_lux:
+            if zone.lux_below_since is None:
+                zone.lux_below_since = now
         else:
-            self.reduction_pct = self._opt(CONF_MID_PCT, DEFAULT_MID_PCT)
+            zone.lux_below_since = None
 
     # --- pause -------------------------------------------------------------
 
@@ -279,39 +355,47 @@ class KydaxEngine:
 
     # --- dim session -------------------------------------------------------
 
-    async def _async_maybe_autostart(self, now: datetime) -> None:
-        if self.session is not None or self._last_session_date == now.date():
+    async def _async_maybe_autostart(
+        self, zone: ZoneState, sunset: datetime, now: datetime
+    ) -> None:
+        if zone.session is not None or zone.last_session_date == now.date():
             return
-
-        sunset = get_astral_event_date(self.hass, SUN_EVENT_SUNSET, now.date())
-        if sunset is None:
-            return
-        sunset = dt_util.as_local(sunset)
 
         if now > sunset + AUTOSTART_GRACE:
-            self._last_session_date = now.date()
+            zone.last_session_date = now.date()
             return
 
-        offset = timedelta(minutes=self._opt(CONF_OFFSET_MIN, DEFAULT_OFFSET_MIN))
-        window = timedelta(minutes=self._opt(CONF_WINDOW_MIN, DEFAULT_WINDOW_MIN))
+        offset = timedelta(
+            minutes=self._zone_opt(zone, CONF_OFFSET_MIN, DEFAULT_OFFSET_MIN)
+        )
+        window = timedelta(
+            minutes=self._zone_opt(zone, CONF_WINDOW_MIN, DEFAULT_WINDOW_MIN)
+        )
         scheduled = sunset - offset
 
         if now >= scheduled:
-            await self.async_start_session(now)
+            await self.async_start_session(zone.zone_id, now)
         elif (
             now >= sunset - window
-            and self._lux_below_since is not None
-            and now - self._lux_below_since
-            >= timedelta(minutes=LUX_DEBOUNCE_MIN)
+            and zone.lux_below_since is not None
+            and now - zone.lux_below_since >= timedelta(minutes=LUX_DEBOUNCE_MIN)
         ):
-            _LOGGER.debug("Starting dim session early on low illuminance")
-            await self.async_start_session(now)
+            _LOGGER.debug(
+                "Zone %s: starting dim session early on low illuminance",
+                zone.zone_id,
+            )
+            await self.async_start_session(zone.zone_id, now)
 
-    async def async_start_session(self, now: datetime | None = None) -> None:
-        """Start a dim session over the lights that are currently on."""
+    async def async_start_session(
+        self, zone_id: str, now: datetime | None = None
+    ) -> None:
+        """Start a dim session over the zone's lights that are currently on."""
+        zone = self.get_zone(zone_id)
+        if zone is None:
+            return
         now = now or dt_util.now()
         progress: dict[str, LightProgress] = {}
-        for entity_id, conf in self.lights.items():
+        for entity_id in zone.lights:
             state = self.hass.states.get(entity_id)
             if state is None or state.state != STATE_ON:
                 continue
@@ -319,40 +403,42 @@ class KydaxEngine:
             if brightness is not None:
                 start_pct = round(brightness / 255 * 100, 1)
             else:
-                start_pct = float(conf.get("day", 100))
+                start_pct = float(self.lights[entity_id].get("day", 100))
             progress[entity_id] = LightProgress(start_pct=start_pct)
 
-        self._last_session_date = now.date()
+        zone.last_session_date = now.date()
         if not progress:
-            _LOGGER.debug("No managed lights are on; nothing to dim")
+            _LOGGER.debug("Zone %s: no lights on, nothing to dim", zone.zone_id)
             return
 
-        self.session = DimSession(started=now, last_advance=now, lights=progress)
+        zone.session = DimSession(started=now, last_advance=now, lights=progress)
         self.active_preset = PRESET_NONE
         self._dispatch()
 
     @callback
-    def cancel_session(self) -> None:
-        self.session = None
+    def cancel_session(self, zone_id: str) -> None:
+        zone = self.get_zone(zone_id)
+        if zone is not None:
+            zone.session = None
         self._dispatch()
 
-    async def _async_advance_session(self, now: datetime) -> None:
-        session = self.session
+    async def _async_advance_session(self, zone: ZoneState, now: datetime) -> None:
+        session = zone.session
         if session is None:
             return
 
-        step_min = self._opt(CONF_STEP_MIN, DEFAULT_STEP_MIN)
+        step_min = self._zone_opt(zone, CONF_STEP_MIN, DEFAULT_STEP_MIN)
         if now - session.last_advance < timedelta(minutes=step_min):
             return
         session.last_advance = now
 
-        steps = self._opt(CONF_STEPS, DEFAULT_STEPS)
+        steps = self._zone_opt(zone, CONF_STEPS, DEFAULT_STEPS)
         for entity_id, progress in session.lights.items():
             if progress.done or self.is_light_paused(entity_id):
                 continue
             progress.step += 1
             target = self.lights[entity_id].get(KEY_EVENING, 0) * (
-                1 - self.reduction_pct / 100
+                1 - zone.reduction / 100
             )
             if progress.step >= steps:
                 progress.done = True
@@ -364,40 +450,43 @@ class KydaxEngine:
             await self._async_apply_pct(entity_id, pct)
 
         if all(p.done for p in session.lights.values()):
-            self.session = None
+            zone.session = None
 
     @callback
     def _async_light_changed(self, event: Event[EventStateChangedData]) -> None:
         """A managed light turned off during a session -> stop dimming it."""
-        session = self.session
-        if session is None:
-            return
         entity_id = event.data["entity_id"]
+        zone = self._zone_by_light.get(entity_id)
+        if zone is None or zone.session is None:
+            return
         new_state = event.data["new_state"]
-        progress = session.lights.get(entity_id)
+        progress = zone.session.lights.get(entity_id)
         if (
             progress is not None
             and not progress.done
             and (new_state is None or new_state.state == STATE_OFF)
         ):
             progress.done = True
-            if all(p.done for p in session.lights.values()):
-                self.session = None
+            if all(p.done for p in zone.session.lights.values()):
+                zone.session = None
             self._dispatch()
 
     # --- presets -----------------------------------------------------------
 
     async def async_apply_preset(self, preset: str) -> None:
-        """Apply a preset immediately; cancels any in-flight session."""
+        """Apply a preset immediately; cancels all in-flight sessions."""
         if preset not in PRESETS:
             return
         self.active_preset = preset
-        self.session = None
+        for zone in self.zones:
+            zone.session = None
         if preset != PRESET_NONE:
             for entity_id, conf in self.lights.items():
                 if self.is_light_paused(entity_id):
                     continue
-                pct = conf.get(preset, 0) * (1 - self.reduction_pct / 100)
+                zone = self._zone_by_light.get(entity_id)
+                reduction = zone.reduction if zone else self.reduction_pct
+                pct = conf.get(preset, 0) * (1 - reduction / 100)
                 await self._async_apply_pct(entity_id, pct)
         self._dispatch()
 
