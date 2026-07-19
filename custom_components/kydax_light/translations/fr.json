@@ -26,9 +26,10 @@
       },
       "lights": {
         "title": "Lumières gérées",
-        "description": "Choisissez les lumières à gérer. Elles démarrent à 90 % jour, 30 % soir, 0 % nuit — ajustez chacune ensuite via Configurer.",
+        "description": "Choisissez les lumières à gérer, ou ajoutez-les toutes d'un coup (les groupes de lumières sont exclus). Elles démarrent à 90 % jour, 30 % soir, 0 % nuit — ajustez chacune ensuite via Configurer.",
         "data": {
-          "lights": "Lumières"
+          "lights": "Lumières",
+          "add_all": "Ajouter toutes les lumières (exclut les groupes)"
         }
       }
     },
@@ -63,7 +64,8 @@
         "title": "Ajouter des lumières",
         "description": "Les nouvelles lumières démarrent à 90 % jour, 30 % soir, 0 % nuit.",
         "data": {
-          "lights": "Lumières"
+          "lights": "Lumières",
+          "add_all": "Ajouter toutes les lumières (exclut les groupes)"
         }
       },
       "edit_light": {

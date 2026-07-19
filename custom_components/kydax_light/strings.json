@@ -26,9 +26,10 @@
       },
       "lights": {
         "title": "Managed lights",
-        "description": "Pick the lights to manage. They start at 90% day, 30% evening, 0% night — adjust each one later in Configure.",
+        "description": "Pick the lights to manage, or add them all at once (light groups are excluded). They start at 90% day, 30% evening, 0% night — adjust each one later in Configure.",
         "data": {
-          "lights": "Lights"
+          "lights": "Lights",
+          "add_all": "Add all lights (excludes light groups)"
         }
       }
     },
@@ -63,7 +64,8 @@
         "title": "Add lights",
         "description": "New lights start at 90% day, 30% evening, 0% night.",
         "data": {
-          "lights": "Lights"
+          "lights": "Lights",
+          "add_all": "Add all lights (excludes light groups)"
         }
       },
       "edit_light": {

@@ -128,6 +128,25 @@ PCT_SCHEMA = vol.Schema(
 )
 
 
+def _all_light_entity_ids(hass) -> list[str]:
+    """Every light entity except light groups (managing both would double-command)."""
+    return [
+        state.entity_id
+        for state in hass.states.async_all("light")
+        if not isinstance(state.attributes.get("entity_id"), (list, tuple))
+    ]
+
+
+LIGHT_PICK_SCHEMA = vol.Schema(
+    {
+        vol.Optional(CONF_LIGHTS, default=[]): EntitySelector(
+            EntitySelectorConfig(domain="light", multiple=True)
+        ),
+        vol.Required("add_all", default=False): BooleanSelector(),
+    }
+)
+
+
 def _validate_source(user_input: dict[str, Any]) -> dict[str, str]:
     """The entity matching the chosen source mode is required."""
     errors: dict[str, str] = {}
@@ -181,13 +200,16 @@ class KydaxConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         if user_input is not None:
+            selected = list(user_input.get(CONF_LIGHTS, []))
+            if user_input.get("add_all"):
+                selected += _all_light_entity_ids(self.hass)
             lights = {
                 entity_id: {
                     KEY_DAY: DEFAULT_DAY,
                     KEY_EVENING: DEFAULT_EVENING,
                     KEY_NIGHT: DEFAULT_NIGHT,
                 }
-                for entity_id in user_input.get(CONF_LIGHTS, [])
+                for entity_id in selected
             }
             return self.async_create_entry(
                 title="Kydax Light",
@@ -200,16 +222,7 @@ class KydaxConfigFlow(ConfigFlow, domain=DOMAIN):
                 },
             )
 
-        return self.async_show_form(
-            step_id="lights",
-            data_schema=vol.Schema(
-                {
-                    vol.Optional(CONF_LIGHTS, default=[]): EntitySelector(
-                        EntitySelectorConfig(domain="light", multiple=True)
-                    )
-                }
-            ),
-        )
+        return self.async_show_form(step_id="lights", data_schema=LIGHT_PICK_SCHEMA)
 
     @staticmethod
     @callback
@@ -269,7 +282,10 @@ class KydaxOptionsFlow(OptionsFlow):
         if user_input is not None:
             options = self._options
             lights = dict(options.get(CONF_LIGHTS, {}))
-            for entity_id in user_input.get(CONF_LIGHTS, []):
+            selected = list(user_input.get(CONF_LIGHTS, []))
+            if user_input.get("add_all"):
+                selected += _all_light_entity_ids(self.hass)
+            for entity_id in selected:
                 lights.setdefault(
                     entity_id,
                     {
@@ -281,16 +297,7 @@ class KydaxOptionsFlow(OptionsFlow):
             options[CONF_LIGHTS] = lights
             return self._save(options)
 
-        return self.async_show_form(
-            step_id="add_light",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_LIGHTS, default=[]): EntitySelector(
-                        EntitySelectorConfig(domain="light", multiple=True)
-                    )
-                }
-            ),
-        )
+        return self.async_show_form(step_id="add_light", data_schema=LIGHT_PICK_SCHEMA)
 
     async def async_step_edit_light(
         self, user_input: dict[str, Any] | None = None
