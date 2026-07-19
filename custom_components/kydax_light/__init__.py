@@ -10,7 +10,7 @@ from homeassistant.helpers import entity_registry as er
 from .const import CONF_PAUSE_BUTTONS, CONF_ZONES
 from .coordinator import KydaxEngine
 
-PLATFORMS = [Platform.SELECT, Platform.SENSOR, Platform.SWITCH]
+PLATFORMS = [Platform.BUTTON, Platform.SELECT, Platform.SENSOR, Platform.SWITCH]
 
 type KydaxConfigEntry = ConfigEntry[KydaxEngine]
 
@@ -50,12 +50,15 @@ def _async_prune_stale_pause_entities(
         f"{entry.entry_id}_pause_{button['id']}"
         for button in entry.options.get(CONF_PAUSE_BUTTONS, [])
     }
-    valid_ids.update(
-        f"{entry.entry_id}_gradation_{zone['id']}"
-        for zone in entry.options.get(CONF_ZONES, [])
-    )
+    zone_ids = [zone["id"] for zone in entry.options.get(CONF_ZONES, [])]
+    valid_ids.update(f"{entry.entry_id}_gradation_{zid}" for zid in zone_ids)
+    for zid in (*zone_ids, "default"):
+        valid_ids.add(f"{entry.entry_id}_test_{zid}")
+        valid_ids.add(f"{entry.entry_id}_test_fast_{zid}")
     for reg_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
         if (
-            "_pause_" in reg_entry.unique_id or "_gradation_" in reg_entry.unique_id
+            "_pause_" in reg_entry.unique_id
+            or "_gradation_" in reg_entry.unique_id
+            or "_test_" in reg_entry.unique_id
         ) and reg_entry.unique_id not in valid_ids:
             registry.async_remove(reg_entry.entity_id)

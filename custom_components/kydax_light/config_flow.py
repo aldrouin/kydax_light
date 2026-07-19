@@ -567,6 +567,16 @@ class KydaxOptionsFlow(OptionsFlow):
             options[CONF_ZONES] = [
                 z for z in options.get(CONF_ZONES, []) if z["id"] not in removed
             ]
+            # Drop deleted zones from pause-button scopes too.
+            options[CONF_PAUSE_BUTTONS] = [
+                {
+                    **button,
+                    "zones": [
+                        z for z in button.get("zones", []) if z not in removed
+                    ],
+                }
+                for button in options.get(CONF_PAUSE_BUTTONS, [])
+            ]
             return self._save(options)
 
         return self.async_show_form(
@@ -596,34 +606,55 @@ class KydaxOptionsFlow(OptionsFlow):
 
     def _button_schema(self) -> vol.Schema:
         managed = list(self._options.get(CONF_LIGHTS, {}))
-        return vol.Schema(
-            {
-                vol.Required("name"): TextSelector(),
-                vol.Required("all", default=False): BooleanSelector(),
-                vol.Optional("lights", default=[]): EntitySelector(
-                    EntitySelectorConfig(include_entities=managed, multiple=True)
-                ),
-            }
+        schema: dict[Any, Any] = {
+            vol.Required("name"): TextSelector(),
+            vol.Required("all", default=False): BooleanSelector(),
+            vol.Optional("lights", default=[]): EntitySelector(
+                EntitySelectorConfig(include_entities=managed, multiple=True)
+            ),
+        }
+        if self._options.get(CONF_ZONES):
+            schema[vol.Optional("zones", default=[])] = SelectSelector(
+                SelectSelectorConfig(
+                    options=self._zone_select_options(),
+                    multiple=True,
+                    mode=SelectSelectorMode.LIST,
+                )
+            )
+        return vol.Schema(schema)
+
+    @staticmethod
+    def _button_scope_valid(user_input: dict[str, Any]) -> bool:
+        return bool(
+            user_input["all"]
+            or user_input.get("lights")
+            or user_input.get("zones")
         )
+
+    @staticmethod
+    def _button_from_input(
+        button_id: str, user_input: dict[str, Any]
+    ) -> dict[str, Any]:
+        covers_all = user_input["all"]
+        return {
+            "id": button_id,
+            "name": user_input["name"],
+            "all": covers_all,
+            "lights": [] if covers_all else user_input.get("lights", []),
+            "zones": [] if covers_all else user_input.get("zones", []),
+        }
 
     async def async_step_add_button(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
-            if not user_input["all"] and not user_input.get("lights"):
+            if not self._button_scope_valid(user_input):
                 errors["lights"] = "button_lights_required"
             else:
                 options = self._options
                 buttons = list(options.get(CONF_PAUSE_BUTTONS, []))
-                buttons.append(
-                    {
-                        "id": uuid4().hex[:8],
-                        "name": user_input["name"],
-                        "all": user_input["all"],
-                        "lights": [] if user_input["all"] else user_input["lights"],
-                    }
-                )
+                buttons.append(self._button_from_input(uuid4().hex[:8], user_input))
                 options[CONF_PAUSE_BUTTONS] = buttons
                 return self._save(options)
 
@@ -665,15 +696,10 @@ class KydaxOptionsFlow(OptionsFlow):
 
         errors: dict[str, str] = {}
         if user_input is not None:
-            if not user_input["all"] and not user_input.get("lights"):
+            if not self._button_scope_valid(user_input):
                 errors["lights"] = "button_lights_required"
             else:
-                updated = {
-                    "id": current["id"],
-                    "name": user_input["name"],
-                    "all": user_input["all"],
-                    "lights": [] if user_input["all"] else user_input["lights"],
-                }
+                updated = self._button_from_input(current["id"], user_input)
                 options[CONF_PAUSE_BUTTONS] = [
                     updated if b["id"] == current["id"] else b for b in buttons
                 ]

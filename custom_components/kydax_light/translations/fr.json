@@ -100,11 +100,12 @@
       },
       "add_button": {
         "title": "Créer un bouton de pause",
-        "description": "Chaque bouton apparaît comme son propre interrupteur : activé = pause en cours. Une lumière est en pause tant qu'au moins un bouton qui la couvre est activé.",
+        "description": "Chaque bouton apparaît comme son propre interrupteur : activé = pause en cours. Une lumière est en pause tant qu'au moins un bouton qui la couvre est activé. La portée par zone suit la zone : les lumières ajoutées plus tard à la zone sont couvertes automatiquement.",
         "data": {
           "name": "Nom",
           "all": "Toutes les lumières gérées",
-          "lights": "Lumières (si pas toutes)"
+          "lights": "Lumières (si pas toutes)",
+          "zones": "Zones"
         }
       },
       "edit_button": {
@@ -118,7 +119,8 @@
         "data": {
           "name": "Nom",
           "all": "Toutes les lumières gérées",
-          "lights": "Lumières (si pas toutes)"
+          "lights": "Lumières (si pas toutes)",
+          "zones": "Zones"
         }
       },
       "remove_button": {
@@ -212,7 +214,7 @@
     "error": {
       "lux_entity_required": "Un capteur de lux est requis pour ce mode",
       "weather_entity_required": "Une entité météo est requise pour ce mode",
-      "button_lights_required": "Sélectionnez au moins une lumière, ou choisissez toutes les lumières",
+      "button_lights_required": "Sélectionnez au moins une lumière ou une zone, ou choisissez toutes les lumières",
       "zone_lights_required": "Sélectionnez au moins une lumière pour la zone",
       "lights_required": "Sélectionnez au moins une lumière, ou choisissez toutes les lumières"
     }
@@ -251,6 +253,20 @@
       },
       "reduction": {
         "name": "Réduction"
+      }
+    },
+    "button": {
+      "test_gradation": {
+        "name": "Test de gradation"
+      },
+      "test_gradation_fast": {
+        "name": "Test de gradation (pas de 10 s)"
+      },
+      "zone_test_gradation": {
+        "name": "Test de gradation {zone}"
+      },
+      "zone_test_gradation_fast": {
+        "name": "Test de gradation {zone} (pas de 10 s)"
       }
     }
   }

@@ -100,11 +100,12 @@
       },
       "add_button": {
         "title": "Create a pause button",
-        "description": "Each button appears as its own switch: on = pause active. A light is paused while any button covering it is on.",
+        "description": "Each button appears as its own switch: on = pause active. A light is paused while any button covering it is on. Zone scope follows the zone: lights added to the zone later are covered automatically.",
         "data": {
           "name": "Name",
           "all": "All managed lights",
-          "lights": "Lights (if not all)"
+          "lights": "Lights (if not all)",
+          "zones": "Zones"
         }
       },
       "edit_button": {
@@ -118,7 +119,8 @@
         "data": {
           "name": "Name",
           "all": "All managed lights",
-          "lights": "Lights (if not all)"
+          "lights": "Lights (if not all)",
+          "zones": "Zones"
         }
       },
       "remove_button": {
@@ -212,7 +214,7 @@
     "error": {
       "lux_entity_required": "A lux sensor is required for this mode",
       "weather_entity_required": "A weather entity is required for this mode",
-      "button_lights_required": "Select at least one light, or choose all lights",
+      "button_lights_required": "Select at least one light or zone, or choose all lights",
       "zone_lights_required": "Select at least one light for the zone",
       "lights_required": "Select at least one light, or choose all lights"
     }
@@ -251,6 +253,20 @@
       },
       "reduction": {
         "name": "Reduction"
+      }
+    },
+    "button": {
+      "test_gradation": {
+        "name": "Test dimming"
+      },
+      "test_gradation_fast": {
+        "name": "Test dimming (10 s steps)"
+      },
+      "zone_test_gradation": {
+        "name": "Test dimming {zone}"
+      },
+      "zone_test_gradation_fast": {
+        "name": "Test dimming {zone} (10 s steps)"
       }
     }
   }

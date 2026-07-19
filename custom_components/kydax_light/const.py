@@ -68,6 +68,9 @@ LUX_DEBOUNCE_MIN = 10
 # engine heartbeat interval (seconds)
 HEARTBEAT_SECONDS = 60
 
+# step cadence for fast test sessions (seconds)
+TEST_STEP_SECONDS = 10
+
 # how often to refresh the weather forecast (minutes) in weather mode
 FORECAST_REFRESH_MIN = 15
 

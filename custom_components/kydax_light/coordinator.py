@@ -65,6 +65,7 @@ from .const import (
     PRESET_NONE,
     PRESETS,
     SOURCE_LUX,
+    TEST_STEP_SECONDS,
     ZONE_DEFAULT,
     signal_update,
 )
@@ -121,6 +122,10 @@ class DimSession:
     started: datetime
     last_advance: datetime
     lights: dict[str, LightProgress] = field(default_factory=dict)
+    # test sessions: step every N seconds instead of the configured minutes
+    step_seconds: int | None = None
+    # test sessions restore pre-test levels when cancelled
+    is_test: bool = False
 
 
 @dataclass
@@ -156,6 +161,7 @@ class KydaxEngine:
 
         self._paused_buttons: set[str] = set()
         self._unsubs: list[CALLBACK_TYPE] = []
+        self._fast_unsub: CALLBACK_TYPE | None = None
 
     # --- configuration accessors -------------------------------------------
 
@@ -234,6 +240,7 @@ class KydaxEngine:
         for unsub in self._unsubs:
             unsub()
         self._unsubs.clear()
+        self._stop_fast_timer()
 
     # --- heartbeat ---------------------------------------------------------
 
@@ -335,10 +342,13 @@ class KydaxEngine:
 
     def is_light_paused(self, entity_id: str) -> bool:
         """A light is paused while ANY active pause button covers it."""
+        zone = self._zone_by_light.get(entity_id)
         for button in self.pause_buttons:
             if button["id"] not in self._paused_buttons:
                 continue
             if button.get("all") or entity_id in button.get("lights", []):
+                return True
+            if zone is not None and zone.zone_id in button.get("zones", []):
                 return True
         return False
 
@@ -387,9 +397,19 @@ class KydaxEngine:
             await self.async_start_session(zone.zone_id, now)
 
     async def async_start_session(
-        self, zone_id: str, now: datetime | None = None
+        self,
+        zone_id: str,
+        now: datetime | None = None,
+        *,
+        fast: bool = False,
+        mark_day: bool = True,
     ) -> None:
-        """Start a dim session over the zone's lights that are currently on."""
+        """Start a dim session over the zone's lights that are currently on.
+
+        Test sessions pass mark_day=False so the evening autostart still runs
+        today, and fast=True to step every TEST_STEP_SECONDS instead of the
+        configured minutes.
+        """
         zone = self.get_zone(zone_id)
         if zone is None:
             return
@@ -406,13 +426,22 @@ class KydaxEngine:
                 start_pct = float(self.lights[entity_id].get("day", 100))
             progress[entity_id] = LightProgress(start_pct=start_pct)
 
-        zone.last_session_date = now.date()
+        if mark_day:
+            zone.last_session_date = now.date()
         if not progress:
             _LOGGER.debug("Zone %s: no lights on, nothing to dim", zone.zone_id)
             return
 
-        zone.session = DimSession(started=now, last_advance=now, lights=progress)
+        zone.session = DimSession(
+            started=now,
+            last_advance=now,
+            lights=progress,
+            step_seconds=TEST_STEP_SECONDS if fast else None,
+            is_test=not mark_day,
+        )
         self.active_preset = PRESET_NONE
+        if fast:
+            self._ensure_fast_timer()
         self._dispatch()
 
     @callback
@@ -420,16 +449,67 @@ class KydaxEngine:
         zone = self.get_zone(zone_id)
         if zone is not None:
             zone.session = None
+        self._maybe_stop_fast_timer()
         self._dispatch()
 
-    async def _async_advance_session(self, zone: ZoneState, now: datetime) -> None:
+    async def async_cancel_session(self, zone_id: str) -> None:
+        """Cancel a session; a cancelled TEST session restores pre-test levels."""
+        zone = self.get_zone(zone_id)
+        if zone is None:
+            return
+        session = zone.session
+        zone.session = None
+        if session is not None and session.is_test:
+            for entity_id, progress in session.lights.items():
+                await self._async_apply_pct(entity_id, progress.start_pct)
+        self._maybe_stop_fast_timer()
+        self._dispatch()
+
+    def _ensure_fast_timer(self) -> None:
+        if self._fast_unsub is None:
+            self._fast_unsub = async_track_time_interval(
+                self.hass,
+                self._async_fast_tick,
+                timedelta(seconds=TEST_STEP_SECONDS),
+            )
+
+    @callback
+    def _stop_fast_timer(self) -> None:
+        if self._fast_unsub is not None:
+            self._fast_unsub()
+            self._fast_unsub = None
+
+    @callback
+    def _maybe_stop_fast_timer(self) -> None:
+        if not any(
+            z.session is not None and z.session.step_seconds is not None
+            for z in self.zones
+        ):
+            self._stop_fast_timer()
+
+    async def _async_fast_tick(self, _now: datetime) -> None:
+        """Advance fast test sessions, one step per firing."""
+        now = dt_util.now()
+        for zone in self.zones:
+            if zone.session is not None and zone.session.step_seconds is not None:
+                await self._async_advance_session(zone, now, force=True)
+        self._maybe_stop_fast_timer()
+        self._dispatch()
+
+    async def _async_advance_session(
+        self, zone: ZoneState, now: datetime, force: bool = False
+    ) -> None:
         session = zone.session
         if session is None:
             return
 
-        step_min = self._zone_opt(zone, CONF_STEP_MIN, DEFAULT_STEP_MIN)
-        if now - session.last_advance < timedelta(minutes=step_min):
-            return
+        if not force:
+            if session.step_seconds is not None:
+                # fast test sessions advance on the fast timer, not the heartbeat
+                return
+            step_min = self._zone_opt(zone, CONF_STEP_MIN, DEFAULT_STEP_MIN)
+            if now - session.last_advance < timedelta(minutes=step_min):
+                return
         session.last_advance = now
 
         steps = self._zone_opt(zone, CONF_STEPS, DEFAULT_STEPS)

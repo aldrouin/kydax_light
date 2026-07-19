@@ -61,7 +61,11 @@ class KydaxPauseSwitch(KydaxEntity, SwitchEntity, RestoreEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         if self._button.get("all"):
             return {"scope": "all"}
-        return {"scope": "group", "lights": self._button.get("lights", [])}
+        return {
+            "scope": "group",
+            "lights": self._button.get("lights", []),
+            "zones": self._button.get("zones", []),
+        }
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         self._engine.set_button_paused(self._button["id"], True)
@@ -114,4 +118,4 @@ class KydaxGradationSwitch(KydaxEntity, SwitchEntity):
         await self._engine.async_start_session(self._zone_id)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        self._engine.cancel_session(self._zone_id)
+        await self._engine.async_cancel_session(self._zone_id)
