@@ -96,6 +96,14 @@ WEATHER_FACTORS = {
 # restarted late in the evening — do not suddenly dim at 23:00).
 AUTOSTART_GRACE = timedelta(hours=1)
 
+# When the auto-update switch is on, pending updates install in this window.
+AUTO_UPDATE_HOUR = 4
+AUTO_UPDATE_WINDOW_MIN = 10
+
+# Releases whose notes contain this marker install at the next window even
+# when auto-update is off.
+CRITICAL_MARKER = "[critical]"
+
 # Zone override keys that fall back to the central schedule when absent.
 ZONE_OVERRIDE_KEYS = (
     CONF_OFFSET_MIN,
@@ -162,6 +170,9 @@ class KydaxEngine:
         self._paused_buttons: set[str] = set()
         self._unsubs: list[CALLBACK_TYPE] = []
         self._fast_unsub: CALLBACK_TYPE | None = None
+
+        self.auto_update_enabled: bool = False
+        self._last_auto_update_date: date | None = None
 
     # --- configuration accessors -------------------------------------------
 
@@ -263,7 +274,47 @@ class KydaxEngine:
                 await self._async_maybe_autostart(zone, sunset, now)
             await self._async_advance_session(zone, now)
 
+        await self._async_maybe_auto_update(now)
         self._dispatch()
+
+    # --- auto-update -------------------------------------------------------
+
+    def _find_update_entity(self) -> str | None:
+        """The HACS update entity for this integration, if present."""
+        for state in self.hass.states.async_all("update"):
+            if "kydax" in state.entity_id:
+                return state.entity_id
+        return None
+
+    async def _async_maybe_auto_update(self, now: datetime) -> None:
+        if now.hour != AUTO_UPDATE_HOUR or now.minute >= AUTO_UPDATE_WINDOW_MIN:
+            return
+        if self._last_auto_update_date == now.date():
+            return
+        entity_id = self._find_update_entity()
+        if entity_id is None:
+            return
+        state = self.hass.states.get(entity_id)
+        if state is None or state.state != STATE_ON:
+            return
+        summary = (state.attributes.get("release_summary") or "").lower()
+        critical = CRITICAL_MARKER in summary
+        if not self.auto_update_enabled and not critical:
+            return
+        self._last_auto_update_date = now.date()
+        _LOGGER.info(
+            "Auto-updating Kydax Light via %s (critical=%s)", entity_id, critical
+        )
+        try:
+            await self.hass.services.async_call(
+                "update", "install", {ATTR_ENTITY_ID: entity_id}, blocking=True
+            )
+        except Exception:  # noqa: BLE001 — never let an update break the engine
+            _LOGGER.exception("Kydax Light auto-update failed")
+            return
+        await self.hass.services.async_call(
+            "homeassistant", "restart", {}, blocking=False
+        )
 
     # --- light source ------------------------------------------------------
 

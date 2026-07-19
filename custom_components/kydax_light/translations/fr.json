@@ -245,6 +245,9 @@
       },
       "zone_gradation": {
         "name": "Gradation {zone}"
+      },
+      "auto_update": {
+        "name": "Mise à jour automatique (installée à 4 h)"
       }
     },
     "sensor": {

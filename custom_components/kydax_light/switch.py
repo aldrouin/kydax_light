@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.components.switch import SwitchEntity
-from homeassistant.const import STATE_ON
+from homeassistant.const import STATE_ON, EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
@@ -31,7 +31,41 @@ async def async_setup_entry(
         KydaxPauseSwitch(engine, button)
         for button in entry.options.get(CONF_PAUSE_BUTTONS, [])
     )
+    entities.append(KydaxAutoUpdateSwitch(engine))
     async_add_entities(entities)
+
+
+class KydaxAutoUpdateSwitch(KydaxEntity, SwitchEntity, RestoreEntity):
+    """Opt-in: install pending updates during the 4 AM window. Default off.
+
+    Releases marked [critical] install at that window regardless.
+    """
+
+    _attr_translation_key = "auto_update"
+    _attr_icon = "mdi:update"
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(self, engine: KydaxEngine) -> None:
+        super().__init__(engine)
+        self._attr_unique_id = f"{engine.entry.entry_id}_auto_update"
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        last = await self.async_get_last_state()
+        if last is not None and last.state == STATE_ON:
+            self._engine.auto_update_enabled = True
+
+    @property
+    def is_on(self) -> bool:
+        return self._engine.auto_update_enabled
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        self._engine.auto_update_enabled = True
+        self.async_write_ha_state()
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        self._engine.auto_update_enabled = False
+        self.async_write_ha_state()
 
 
 class KydaxPauseSwitch(KydaxEntity, SwitchEntity, RestoreEntity):

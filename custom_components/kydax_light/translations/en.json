@@ -245,6 +245,9 @@
       },
       "zone_gradation": {
         "name": "Dimming {zone}"
+      },
+      "auto_update": {
+        "name": "Auto-update (installs at 4 AM)"
       }
     },
     "sensor": {
