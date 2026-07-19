@@ -1,0 +1,189 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Source de luminosité",
+        "description": "Choisissez comment Kydax Light mesure la lumière extérieure.",
+        "data": {
+          "source_mode": "Source",
+          "lux_entity": "Capteur de lux",
+          "weather_entity": "Entité météo"
+        }
+      },
+      "schedule": {
+        "title": "Horaire et réductions",
+        "data": {
+          "sunset_offset_minutes": "Commencer la gradation avant le coucher du soleil",
+          "step_minutes": "Minutes entre les paliers",
+          "steps": "Nombre de paliers",
+          "start_lux": "Départ anticipé sous cette luminosité",
+          "early_window_minutes": "Départ anticipé permis dans cette fenêtre avant le coucher",
+          "high_lux": "Aucune réduction au-dessus de",
+          "low_lux": "Réduction forte en dessous de",
+          "mid_reduction_pct": "Réduction moyenne",
+          "strong_reduction_pct": "Réduction forte"
+        }
+      },
+      "lights": {
+        "title": "Lumières gérées",
+        "description": "Choisissez les lumières à gérer. Elles démarrent à 90 % jour, 30 % soir, 0 % nuit — ajustez chacune ensuite via Configurer.",
+        "data": {
+          "lights": "Lumières"
+        }
+      }
+    },
+    "error": {
+      "lux_entity_required": "Un capteur de lux est requis pour ce mode",
+      "weather_entity_required": "Une entité météo est requise pour ce mode"
+    },
+    "abort": {
+      "already_configured": "Kydax Light est déjà configuré"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Kydax Light",
+        "menu_options": {
+          "lights": "Gérer les lumières",
+          "pause_buttons": "Gérer les boutons de pause",
+          "source": "Source de luminosité",
+          "schedule": "Horaire et réductions"
+        }
+      },
+      "lights": {
+        "title": "Gérer les lumières",
+        "menu_options": {
+          "add_light": "Ajouter des lumières",
+          "edit_light": "Modifier une lumière",
+          "remove_light": "Retirer des lumières"
+        }
+      },
+      "add_light": {
+        "title": "Ajouter des lumières",
+        "description": "Les nouvelles lumières démarrent à 90 % jour, 30 % soir, 0 % nuit.",
+        "data": {
+          "lights": "Lumières"
+        }
+      },
+      "edit_light": {
+        "title": "Modifier une lumière",
+        "data": {
+          "light": "Lumière"
+        }
+      },
+      "edit_light_pct": {
+        "title": "Luminosité pour {light}",
+        "data": {
+          "day": "Jour",
+          "evening": "Soir",
+          "night": "Nuit"
+        }
+      },
+      "remove_light": {
+        "title": "Retirer des lumières",
+        "data": {
+          "lights": "Lumières à retirer"
+        }
+      },
+      "pause_buttons": {
+        "title": "Gérer les boutons de pause",
+        "menu_options": {
+          "add_button": "Créer un bouton",
+          "edit_button": "Modifier un bouton",
+          "remove_button": "Supprimer des boutons"
+        }
+      },
+      "add_button": {
+        "title": "Créer un bouton de pause",
+        "description": "Chaque bouton apparaît comme son propre interrupteur : activé = pause en cours. Une lumière est en pause tant qu'au moins un bouton qui la couvre est activé.",
+        "data": {
+          "name": "Nom",
+          "all": "Toutes les lumières gérées",
+          "lights": "Lumières (si pas toutes)"
+        }
+      },
+      "edit_button": {
+        "title": "Modifier un bouton de pause",
+        "data": {
+          "button": "Bouton"
+        }
+      },
+      "edit_button_form": {
+        "title": "Modifier le bouton de pause",
+        "data": {
+          "name": "Nom",
+          "all": "Toutes les lumières gérées",
+          "lights": "Lumières (si pas toutes)"
+        }
+      },
+      "remove_button": {
+        "title": "Supprimer des boutons de pause",
+        "data": {
+          "buttons": "Boutons à supprimer"
+        }
+      },
+      "source": {
+        "title": "Source de luminosité",
+        "data": {
+          "source_mode": "Source",
+          "lux_entity": "Capteur de lux",
+          "weather_entity": "Entité météo"
+        }
+      },
+      "schedule": {
+        "title": "Horaire et réductions",
+        "data": {
+          "sunset_offset_minutes": "Commencer la gradation avant le coucher du soleil",
+          "step_minutes": "Minutes entre les paliers",
+          "steps": "Nombre de paliers",
+          "start_lux": "Départ anticipé sous cette luminosité",
+          "early_window_minutes": "Départ anticipé permis dans cette fenêtre avant le coucher",
+          "high_lux": "Aucune réduction au-dessus de",
+          "low_lux": "Réduction forte en dessous de",
+          "mid_reduction_pct": "Réduction moyenne",
+          "strong_reduction_pct": "Réduction forte"
+        }
+      }
+    },
+    "error": {
+      "lux_entity_required": "Un capteur de lux est requis pour ce mode",
+      "weather_entity_required": "Une entité météo est requise pour ce mode",
+      "button_lights_required": "Sélectionnez au moins une lumière, ou choisissez toutes les lumières"
+    }
+  },
+  "selector": {
+    "source_mode": {
+      "options": {
+        "lux": "Capteur de lux",
+        "weather": "Estimation météo"
+      }
+    }
+  },
+  "entity": {
+    "select": {
+      "preset": {
+        "name": "Préréglage",
+        "state": {
+          "day": "Jour",
+          "evening": "Soir",
+          "night": "Nuit",
+          "none": "Aucun"
+        }
+      }
+    },
+    "switch": {
+      "gradation": {
+        "name": "Gradation du soir"
+      }
+    },
+    "sensor": {
+      "illuminance": {
+        "name": "Luminosité extérieure"
+      },
+      "reduction": {
+        "name": "Réduction"
+      }
+    }
+  }
+}

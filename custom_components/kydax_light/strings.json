@@ -1,0 +1,189 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Light source",
+        "description": "Choose how Kydax Light measures outdoor light.",
+        "data": {
+          "source_mode": "Source",
+          "lux_entity": "Lux sensor",
+          "weather_entity": "Weather entity"
+        }
+      },
+      "schedule": {
+        "title": "Schedule and reductions",
+        "data": {
+          "sunset_offset_minutes": "Start dimming before sunset",
+          "step_minutes": "Minutes between dim steps",
+          "steps": "Number of dim steps",
+          "start_lux": "Start early below this illuminance",
+          "early_window_minutes": "Early start allowed within this window before sunset",
+          "high_lux": "No reduction above",
+          "low_lux": "Strong reduction below",
+          "mid_reduction_pct": "Medium reduction",
+          "strong_reduction_pct": "Strong reduction"
+        }
+      },
+      "lights": {
+        "title": "Managed lights",
+        "description": "Pick the lights to manage. They start at 90% day, 30% evening, 0% night — adjust each one later in Configure.",
+        "data": {
+          "lights": "Lights"
+        }
+      }
+    },
+    "error": {
+      "lux_entity_required": "A lux sensor is required for this mode",
+      "weather_entity_required": "A weather entity is required for this mode"
+    },
+    "abort": {
+      "already_configured": "Kydax Light is already configured"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Kydax Light",
+        "menu_options": {
+          "lights": "Manage lights",
+          "pause_buttons": "Manage pause buttons",
+          "source": "Light source",
+          "schedule": "Schedule and reductions"
+        }
+      },
+      "lights": {
+        "title": "Manage lights",
+        "menu_options": {
+          "add_light": "Add lights",
+          "edit_light": "Edit a light",
+          "remove_light": "Remove lights"
+        }
+      },
+      "add_light": {
+        "title": "Add lights",
+        "description": "New lights start at 90% day, 30% evening, 0% night.",
+        "data": {
+          "lights": "Lights"
+        }
+      },
+      "edit_light": {
+        "title": "Edit a light",
+        "data": {
+          "light": "Light"
+        }
+      },
+      "edit_light_pct": {
+        "title": "Brightness for {light}",
+        "data": {
+          "day": "Day",
+          "evening": "Evening",
+          "night": "Night"
+        }
+      },
+      "remove_light": {
+        "title": "Remove lights",
+        "data": {
+          "lights": "Lights to remove"
+        }
+      },
+      "pause_buttons": {
+        "title": "Manage pause buttons",
+        "menu_options": {
+          "add_button": "Create a button",
+          "edit_button": "Edit a button",
+          "remove_button": "Delete buttons"
+        }
+      },
+      "add_button": {
+        "title": "Create a pause button",
+        "description": "Each button appears as its own switch: on = pause active. A light is paused while any button covering it is on.",
+        "data": {
+          "name": "Name",
+          "all": "All managed lights",
+          "lights": "Lights (if not all)"
+        }
+      },
+      "edit_button": {
+        "title": "Edit a pause button",
+        "data": {
+          "button": "Button"
+        }
+      },
+      "edit_button_form": {
+        "title": "Edit pause button",
+        "data": {
+          "name": "Name",
+          "all": "All managed lights",
+          "lights": "Lights (if not all)"
+        }
+      },
+      "remove_button": {
+        "title": "Delete pause buttons",
+        "data": {
+          "buttons": "Buttons to delete"
+        }
+      },
+      "source": {
+        "title": "Light source",
+        "data": {
+          "source_mode": "Source",
+          "lux_entity": "Lux sensor",
+          "weather_entity": "Weather entity"
+        }
+      },
+      "schedule": {
+        "title": "Schedule and reductions",
+        "data": {
+          "sunset_offset_minutes": "Start dimming before sunset",
+          "step_minutes": "Minutes between dim steps",
+          "steps": "Number of dim steps",
+          "start_lux": "Start early below this illuminance",
+          "early_window_minutes": "Early start allowed within this window before sunset",
+          "high_lux": "No reduction above",
+          "low_lux": "Strong reduction below",
+          "mid_reduction_pct": "Medium reduction",
+          "strong_reduction_pct": "Strong reduction"
+        }
+      }
+    },
+    "error": {
+      "lux_entity_required": "A lux sensor is required for this mode",
+      "weather_entity_required": "A weather entity is required for this mode",
+      "button_lights_required": "Select at least one light, or choose all lights"
+    }
+  },
+  "selector": {
+    "source_mode": {
+      "options": {
+        "lux": "Lux meter",
+        "weather": "Weather estimate"
+      }
+    }
+  },
+  "entity": {
+    "select": {
+      "preset": {
+        "name": "Preset",
+        "state": {
+          "day": "Day",
+          "evening": "Evening",
+          "night": "Night",
+          "none": "None"
+        }
+      }
+    },
+    "switch": {
+      "gradation": {
+        "name": "Evening dimming"
+      }
+    },
+    "sensor": {
+      "illuminance": {
+        "name": "Outdoor illuminance"
+      },
+      "reduction": {
+        "name": "Reduction"
+      }
+    }
+  }
+}
