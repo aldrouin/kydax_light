@@ -452,6 +452,17 @@ class KydaxEngine:
         self._maybe_stop_fast_timer()
         self._dispatch()
 
+    async def async_cancel_all_tests(self) -> None:
+        """Stop every running test session and restore pre-test levels."""
+        for zone in self.zones:
+            session = zone.session
+            if session is not None and session.is_test:
+                zone.session = None
+                for entity_id, progress in session.lights.items():
+                    await self._async_apply_pct(entity_id, progress.start_pct)
+        self._maybe_stop_fast_timer()
+        self._dispatch()
+
     async def async_cancel_session(self, zone_id: str) -> None:
         """Cancel a session; a cancelled TEST session restores pre-test levels."""
         zone = self.get_zone(zone_id)

@@ -1,13 +1,17 @@
 {
   "domain": "kydax_light",
   "name": "Kydax Light",
-  "codeowners": ["@aldrouin"],
+  "codeowners": [
+    "@aldrouin"
+  ],
   "config_flow": true,
-  "dependencies": ["sun"],
+  "dependencies": [
+    "sun"
+  ],
   "documentation": "https://github.com/aldrouin/kydax_light",
   "integration_type": "hub",
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/aldrouin/kydax_light/issues",
   "requirements": [],
-  "version": "0.3.0"
+  "version": "0.3.1"
 }

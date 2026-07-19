@@ -267,6 +267,9 @@
       },
       "zone_test_gradation_fast": {
         "name": "Test dimming {zone} (10 s steps)"
+      },
+      "stop_tests": {
+        "name": "Stop all tests and restore"
       }
     }
   }

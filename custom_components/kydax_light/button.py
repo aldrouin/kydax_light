@@ -23,11 +23,25 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     engine = entry.runtime_data
-    entities: list[ButtonEntity] = []
+    entities: list[ButtonEntity] = [KydaxStopTestsButton(engine)]
     for zone in engine.zones:
         entities.append(KydaxTestButton(engine, zone.zone_id, zone.name, fast=False))
         entities.append(KydaxTestButton(engine, zone.zone_id, zone.name, fast=True))
     async_add_entities(entities)
+
+
+class KydaxStopTestsButton(KydaxEntity, ButtonEntity):
+    """Stop every running test and restore pre-test brightness everywhere."""
+
+    _attr_translation_key = "stop_tests"
+    _attr_icon = "mdi:stop"
+
+    def __init__(self, engine: KydaxEngine) -> None:
+        super().__init__(engine)
+        self._attr_unique_id = f"{engine.entry.entry_id}_stop_tests"
+
+    async def async_press(self) -> None:
+        await self._engine.async_cancel_all_tests()
 
 
 class KydaxTestButton(KydaxEntity, ButtonEntity):

@@ -267,6 +267,9 @@
       },
       "zone_test_gradation_fast": {
         "name": "Test de gradation {zone} (pas de 10 s)"
+      },
+      "stop_tests": {
+        "name": "Arrêter tous les tests et restaurer"
       }
     }
   }
