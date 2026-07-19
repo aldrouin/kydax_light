@@ -65,18 +65,12 @@ from .const import (
 
 
 def _int_number(minimum: float, maximum: float, unit: str | None = None):
-    return vol.All(
-        NumberSelector(
-            NumberSelectorConfig(
-                min=minimum,
-                max=maximum,
-                step=1,
-                mode=NumberSelectorMode.BOX,
-                unit_of_measurement=unit,
-            )
-        ),
-        vol.Coerce(int),
+    config = NumberSelectorConfig(
+        min=minimum, max=maximum, step=1, mode=NumberSelectorMode.BOX
     )
+    if unit is not None:
+        config["unit_of_measurement"] = unit
+    return vol.All(NumberSelector(config), vol.Coerce(int))
 
 
 SOURCE_SCHEMA = vol.Schema(
