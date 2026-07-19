@@ -275,8 +275,52 @@ class KydaxOptionsFlow(OptionsFlow):
     ) -> ConfigFlowResult:
         menu = ["add_light"]
         if self._options.get(CONF_LIGHTS):
-            menu += ["edit_light", "remove_light"]
+            menu += ["bulk_edit_light", "edit_light", "remove_light"]
         return self.async_show_menu(step_id="lights", menu_options=menu)
+
+    async def async_step_bulk_edit_light(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Apply the same day/evening/night percentages to many lights at once."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            options = self._options
+            lights = dict(options.get(CONF_LIGHTS, {}))
+            targets = (
+                list(lights)
+                if user_input.get("all")
+                else user_input.get("lights", [])
+            )
+            if not targets:
+                errors["lights"] = "lights_required"
+            else:
+                values = {
+                    KEY_DAY: user_input[KEY_DAY],
+                    KEY_EVENING: user_input[KEY_EVENING],
+                    KEY_NIGHT: user_input[KEY_NIGHT],
+                }
+                for entity_id in targets:
+                    if entity_id in lights:
+                        lights[entity_id] = dict(values)
+                options[CONF_LIGHTS] = lights
+                return self._save(options)
+
+        schema = vol.Schema(
+            {
+                vol.Required("all", default=False): BooleanSelector(),
+                vol.Optional("lights", default=[]): SelectSelector(
+                    SelectSelectorConfig(
+                        options=self._light_select_options(),
+                        multiple=True,
+                        mode=SelectSelectorMode.LIST,
+                    )
+                ),
+                **PCT_SCHEMA.schema,
+            }
+        )
+        return self.async_show_form(
+            step_id="bulk_edit_light", data_schema=schema, errors=errors
+        )
 
     async def async_step_add_light(
         self, user_input: dict[str, Any] | None = None

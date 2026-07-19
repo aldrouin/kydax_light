@@ -58,7 +58,8 @@
         "menu_options": {
           "add_light": "Ajouter des lumières",
           "edit_light": "Modifier une lumière",
-          "remove_light": "Retirer des lumières"
+          "remove_light": "Retirer des lumières",
+          "bulk_edit_light": "Modifier plusieurs lumières à la fois"
         }
       },
       "add_light": {
@@ -195,13 +196,25 @@
         "data": {
           "zones": "Zones à supprimer"
         }
+      },
+      "bulk_edit_light": {
+        "title": "Modifier plusieurs lumières",
+        "description": "Les pourcentages ci-dessous sont appliqués à toutes les lumières sélectionnées.",
+        "data": {
+          "all": "Toutes les lumières gérées",
+          "lights": "Lumières",
+          "day": "Jour",
+          "evening": "Soir",
+          "night": "Nuit"
+        }
       }
     },
     "error": {
       "lux_entity_required": "Un capteur de lux est requis pour ce mode",
       "weather_entity_required": "Une entité météo est requise pour ce mode",
       "button_lights_required": "Sélectionnez au moins une lumière, ou choisissez toutes les lumières",
-      "zone_lights_required": "Sélectionnez au moins une lumière pour la zone"
+      "zone_lights_required": "Sélectionnez au moins une lumière pour la zone",
+      "lights_required": "Sélectionnez au moins une lumière, ou choisissez toutes les lumières"
     }
   },
   "selector": {

@@ -58,7 +58,8 @@
         "menu_options": {
           "add_light": "Add lights",
           "edit_light": "Edit a light",
-          "remove_light": "Remove lights"
+          "remove_light": "Remove lights",
+          "bulk_edit_light": "Edit several lights at once"
         }
       },
       "add_light": {
@@ -195,13 +196,25 @@
         "data": {
           "zones": "Zones to delete"
         }
+      },
+      "bulk_edit_light": {
+        "title": "Edit several lights",
+        "description": "The percentages below are applied to every selected light.",
+        "data": {
+          "all": "All managed lights",
+          "lights": "Lights",
+          "day": "Day",
+          "evening": "Evening",
+          "night": "Night"
+        }
       }
     },
     "error": {
       "lux_entity_required": "A lux sensor is required for this mode",
       "weather_entity_required": "A weather entity is required for this mode",
       "button_lights_required": "Select at least one light, or choose all lights",
-      "zone_lights_required": "Select at least one light for the zone"
+      "zone_lights_required": "Select at least one light for the zone",
+      "lights_required": "Select at least one light, or choose all lights"
     }
   },
   "selector": {
