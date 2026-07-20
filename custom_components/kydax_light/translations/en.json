@@ -52,7 +52,8 @@
           "source": "Light source",
           "schedule": "Schedule and reductions",
           "zones": "Manage zones",
-          "tests": "Tests"
+          "tests": "Tests",
+          "backup": "Import / export"
         }
       },
       "tests": {
@@ -220,6 +221,36 @@
           "evening": "Evening",
           "night": "Night"
         }
+      },
+      "backup": {
+        "title": "Import / export",
+        "menu_options": {
+          "export": "Export the configuration to a file",
+          "export_lights": "Export the list of all available lights",
+          "import": "Import a configuration from a file"
+        }
+      },
+      "export": {
+        "title": "Export the configuration",
+        "description": "Writes the managed lights with their day/evening/night percentages, the zones, the pause buttons and the schedule to a file you can download from your browser. The light source sensors are not included, as they differ from one installation to another.",
+        "data": {
+          "path": "File name"
+        }
+      },
+      "export_lights": {
+        "title": "Export the list of all lights",
+        "description": "Writes every light of this installation to a file you can download, each with the default percentages, plus a readable list of their names. Edit the percentages and upload it back to configure everything at once.",
+        "data": {
+          "path": "File name",
+          "add_groups": "Include light groups"
+        }
+      },
+      "import": {
+        "title": "Import a configuration",
+        "description": "Upload a file exported from Kydax Light. The lights, zones, pause buttons and schedule are replaced.",
+        "data": {
+          "file": "File"
+        }
       }
     },
     "error": {
@@ -227,7 +258,14 @@
       "weather_entity_required": "A weather entity is required for this mode",
       "button_lights_required": "Select at least one light or zone, or choose all lights",
       "zone_lights_required": "Select at least one light for the zone",
-      "lights_required": "Select at least one light, or choose all lights"
+      "lights_required": "Select at least one light, or choose all lights",
+      "invalid_file": "The file is not a valid Kydax Light export",
+      "invalid_lights": "The file contains lights that are not light entities, or percentages outside 0-100",
+      "write_failed": "Could not write the file - check the name and permissions"
+    },
+    "abort": {
+      "exported": "Configuration exported. Download it at: {url}",
+      "lights_exported": "{count} lights exported. Download the file at: {url}"
     }
   },
   "selector": {

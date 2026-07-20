@@ -52,7 +52,8 @@
           "source": "Source de luminosité",
           "schedule": "Horaire et réductions",
           "zones": "Gérer les zones",
-          "tests": "Tests"
+          "tests": "Tests",
+          "backup": "Importer / exporter"
         }
       },
       "tests": {
@@ -220,6 +221,36 @@
           "evening": "Soir",
           "night": "Nuit"
         }
+      },
+      "backup": {
+        "title": "Importer / exporter",
+        "menu_options": {
+          "export": "Exporter la configuration vers un fichier",
+          "export_lights": "Exporter la liste de toutes les lumières disponibles",
+          "import": "Importer une configuration depuis un fichier"
+        }
+      },
+      "export": {
+        "title": "Exporter la configuration",
+        "description": "Écrit les lumières gérées avec leurs pourcentages jour/soir/nuit, les zones, les boutons de pause et l'horaire dans un fichier téléchargeable depuis votre navigateur. Les capteurs de luminosité ne sont pas inclus, car ils diffèrent d'une installation à l'autre.",
+        "data": {
+          "path": "Nom du fichier"
+        }
+      },
+      "export_lights": {
+        "title": "Exporter la liste de toutes les lumières",
+        "description": "Écrit toutes les lumières de cette installation dans un fichier téléchargeable, chacune avec les pourcentages par défaut, ainsi qu'une liste lisible de leurs noms. Modifiez les pourcentages et téléversez-le pour tout configurer d'un coup.",
+        "data": {
+          "path": "Nom du fichier",
+          "add_groups": "Inclure les groupes de lumières"
+        }
+      },
+      "import": {
+        "title": "Importer une configuration",
+        "description": "Téléversez un fichier exporté depuis Kydax Light. Les lumières, zones, boutons de pause et l'horaire sont remplacés.",
+        "data": {
+          "file": "Fichier"
+        }
       }
     },
     "error": {
@@ -227,7 +258,14 @@
       "weather_entity_required": "Une entité météo est requise pour ce mode",
       "button_lights_required": "Sélectionnez au moins une lumière ou une zone, ou choisissez toutes les lumières",
       "zone_lights_required": "Sélectionnez au moins une lumière pour la zone",
-      "lights_required": "Sélectionnez au moins une lumière, ou choisissez toutes les lumières"
+      "lights_required": "Sélectionnez au moins une lumière, ou choisissez toutes les lumières",
+      "invalid_file": "Le fichier n'est pas un export Kydax Light valide",
+      "invalid_lights": "Le fichier contient des entités qui ne sont pas des lumières, ou des pourcentages hors de 0-100",
+      "write_failed": "Impossible d'écrire le fichier — vérifiez le nom et les permissions"
+    },
+    "abort": {
+      "exported": "Configuration exportée. Téléchargez-la ici : {url}",
+      "lights_exported": "{count} lumières exportées. Téléchargez le fichier ici : {url}"
     }
   },
   "selector": {

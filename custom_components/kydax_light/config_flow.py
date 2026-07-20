@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import os
 from typing import Any
 from uuid import uuid4
 
@@ -14,9 +16,12 @@ from homeassistant.config_entries import (
     OptionsFlow,
 )
 from homeassistant.core import callback
+from homeassistant.components.file_upload import process_uploaded_file
 from homeassistant.helpers.selector import (
     BooleanSelector,
     EntitySelector,
+    FileSelector,
+    FileSelectorConfig,
     EntitySelectorConfig,
     NumberSelector,
     NumberSelectorConfig,
@@ -154,6 +159,83 @@ LIGHT_PICK_SCHEMA = vol.Schema(
 )
 
 
+# import/export: what describes a site, without the entities and sensors
+# that only exist on one installation
+PORTABLE_KEYS = (
+    CONF_LIGHTS,
+    CONF_ZONES,
+    CONF_PAUSE_BUTTONS,
+    CONF_OFFSET_MIN,
+    CONF_STEP_MIN,
+    CONF_STEPS,
+    CONF_START_LUX,
+    CONF_WINDOW_MIN,
+    CONF_HIGH_LUX,
+    CONF_LOW_LUX,
+    CONF_MID_PCT,
+    CONF_STRONG_PCT,
+)
+DEFAULT_CONFIG_FILE = "kydax_light.json"
+DEFAULT_LIGHTS_FILE = "kydax_light_all_lights.json"
+# written under www/ so it can be downloaded from a browser at /local/<name>
+DOWNLOAD_DIR = "www"
+
+
+def _export_payload(options: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "kydax_light": {
+            key: options.get(key) for key in PORTABLE_KEYS if key in options
+        }
+    }
+
+
+def _all_lights_payload(hass, include_groups: bool) -> dict[str, Any]:
+    """Every light in this installation, ready to edit and import back."""
+    lights: dict[str, Any] = {}
+    listing: list[dict[str, Any]] = []
+    for entity_id in _all_light_entity_ids(hass, include_groups):
+        state = hass.states.get(entity_id)
+        members = state.attributes.get("entity_id") if state else None
+        listing.append(
+            {
+                "entity_id": entity_id,
+                "name": state.name if state else entity_id,
+                "is_group": isinstance(members, (list, tuple)),
+            }
+        )
+        lights[entity_id] = {
+            KEY_DAY: DEFAULT_DAY,
+            KEY_EVENING: DEFAULT_EVENING,
+            KEY_NIGHT: DEFAULT_NIGHT,
+        }
+    return {"available_lights": listing, "kydax_light": {CONF_LIGHTS: lights}}
+
+
+def _validate_payload(payload: Any) -> str | None:
+    """Return an error key when the imported content is unusable."""
+    if not isinstance(payload, dict):
+        return "invalid_file"
+    lights = payload.get(CONF_LIGHTS)
+    if lights is not None:
+        if not isinstance(lights, dict):
+            return "invalid_file"
+        for entity_id, values in lights.items():
+            if not entity_id.startswith("light.") or not isinstance(values, dict):
+                return "invalid_lights"
+            for key in (KEY_DAY, KEY_EVENING, KEY_NIGHT):
+                value = values.get(key)
+                if not isinstance(value, int) or not 0 <= value <= 100:
+                    return "invalid_lights"
+    for key in (CONF_ZONES, CONF_PAUSE_BUTTONS):
+        value = payload.get(key)
+        if value is not None and (
+            not isinstance(value, list)
+            or not all(isinstance(item, dict) and item.get("id") for item in value)
+        ):
+            return "invalid_file"
+    return None
+
+
 def _validate_source(user_input: dict[str, Any]) -> dict[str, str]:
     """The entity matching the chosen source mode is required."""
     errors: dict[str, str] = {}
@@ -279,8 +361,132 @@ class KydaxOptionsFlow(OptionsFlow):
                 "pause_buttons",
                 "source",
                 "schedule",
+                "backup",
                 "tests",
             ],
+        )
+
+    # --- import / export ------------------------------------------------------
+
+    async def async_step_backup(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        return self.async_show_menu(
+            step_id="backup",
+            menu_options=["export", "export_lights", "import"],
+        )
+
+    async def _async_write_file(self, name: str, payload: dict) -> str:
+        """Write into www/ and return the browser path to download it."""
+        name = name.strip() or DEFAULT_CONFIG_FILE
+        directory = self.hass.config.path(DOWNLOAD_DIR)
+        path = self.hass.config.path(DOWNLOAD_DIR, name)
+
+        def _write() -> None:
+            os.makedirs(directory, exist_ok=True)
+            with open(path, "w", encoding="utf-8") as handle:
+                json.dump(payload, handle, indent=2, ensure_ascii=False)
+
+        await self.hass.async_add_executor_job(_write)
+        return f"/local/{name}"
+
+    async def async_step_export(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Write lights, zones, pause buttons and the schedule to a file."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            try:
+                url = await self._async_write_file(
+                    user_input["path"], _export_payload(self._options)
+                )
+            except OSError:
+                errors["path"] = "write_failed"
+            else:
+                return self.async_abort(
+                    reason="exported", description_placeholders={"url": url}
+                )
+
+        return self.async_show_form(
+            step_id="export",
+            data_schema=vol.Schema(
+                {vol.Required("path", default=DEFAULT_CONFIG_FILE): TextSelector()}
+            ),
+            errors=errors,
+        )
+
+    async def async_step_export_lights(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """List every light of this installation into an importable file."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            payload = _all_lights_payload(
+                self.hass, user_input.get("add_groups", False)
+            )
+            try:
+                url = await self._async_write_file(user_input["path"], payload)
+            except OSError:
+                errors["path"] = "write_failed"
+            else:
+                return self.async_abort(
+                    reason="lights_exported",
+                    description_placeholders={
+                        "url": url,
+                        "count": str(len(payload["available_lights"])),
+                    },
+                )
+
+        return self.async_show_form(
+            step_id="export_lights",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("path", default=DEFAULT_LIGHTS_FILE): TextSelector(),
+                    vol.Required("add_groups", default=False): BooleanSelector(),
+                }
+            ),
+            errors=errors,
+        )
+
+    async def async_step_import(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Replace lights, zones, pause buttons and schedule from a file."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            def _read() -> Any:
+                with process_uploaded_file(self.hass, user_input["file"]) as path:
+                    with open(path, encoding="utf-8") as handle:
+                        return json.load(handle)
+
+            try:
+                data = await self.hass.async_add_executor_job(_read)
+            except (OSError, ValueError, KeyError):
+                errors["file"] = "invalid_file"
+            else:
+                payload = (
+                    data.get("kydax_light", data) if isinstance(data, dict) else data
+                )
+                problem = _validate_payload(payload)
+                if problem:
+                    errors["file"] = problem
+                else:
+                    options = self._options
+                    for key in PORTABLE_KEYS:
+                        if payload.get(key) is not None:
+                            options[key] = payload[key]
+                    return self._save(options)
+
+        return self.async_show_form(
+            step_id="import",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("file"): FileSelector(
+                        FileSelectorConfig(accept=".json,application/json")
+                    )
+                }
+            ),
+            errors=errors,
         )
 
     # --- tests --------------------------------------------------------------
