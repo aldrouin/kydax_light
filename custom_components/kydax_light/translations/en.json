@@ -50,7 +50,16 @@
           "pause_buttons": "Manage pause buttons",
           "source": "Light source",
           "schedule": "Schedule and reductions",
-          "zones": "Manage zones"
+          "zones": "Manage zones",
+          "tests": "Tests"
+        }
+      },
+      "tests": {
+        "title": "Tests",
+        "description": "Run a dim-session test on a zone (test sessions do not consume the evening autostart), or stop all running tests.",
+        "data": {
+          "zone": "Zone",
+          "action": "Action"
         }
       },
       "lights": {
@@ -225,6 +234,13 @@
         "lux": "Lux meter",
         "weather": "Weather estimate"
       }
+    },
+    "test_action": {
+      "options": {
+        "test": "Test dimming",
+        "fast": "Test dimming (10 s steps)",
+        "stop": "Stop all tests and restore"
+      }
     }
   },
   "entity": {
@@ -256,23 +272,6 @@
       },
       "reduction": {
         "name": "Reduction"
-      }
-    },
-    "button": {
-      "test_gradation": {
-        "name": "Test dimming"
-      },
-      "test_gradation_fast": {
-        "name": "Test dimming (10 s steps)"
-      },
-      "zone_test_gradation": {
-        "name": "Test dimming {zone}"
-      },
-      "zone_test_gradation_fast": {
-        "name": "Test dimming {zone} (10 s steps)"
-      },
-      "stop_tests": {
-        "name": "Stop all tests and restore"
       }
     }
   }

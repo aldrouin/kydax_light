@@ -265,8 +265,58 @@ class KydaxOptionsFlow(OptionsFlow):
     ) -> ConfigFlowResult:
         return self.async_show_menu(
             step_id="init",
-            menu_options=["lights", "zones", "pause_buttons", "source", "schedule"],
+            menu_options=[
+                "lights",
+                "zones",
+                "pause_buttons",
+                "source",
+                "schedule",
+                "tests",
+            ],
         )
+
+    # --- tests --------------------------------------------------------------
+
+    async def async_step_tests(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Run a dim-session test on a zone, or stop running tests.
+
+        Runs the action immediately and returns to the menu; nothing is
+        saved. Test sessions do not consume the daily autostart.
+        """
+        engine = self.config_entry.runtime_data
+        if user_input is not None:
+            action = user_input["action"]
+            if action == "stop":
+                await engine.async_cancel_all_tests()
+            else:
+                await engine.async_start_session(
+                    user_input["zone"], fast=action == "fast", mark_day=False
+                )
+            return await self.async_step_init()
+
+        zone_options = [
+            SelectOptionDict(value=zone.zone_id, label=zone.name)
+            for zone in engine.zones
+        ]
+        schema = vol.Schema(
+            {
+                vol.Required("zone", default=zone_options[0]["value"]): SelectSelector(
+                    SelectSelectorConfig(
+                        options=zone_options, mode=SelectSelectorMode.DROPDOWN
+                    )
+                ),
+                vol.Required("action", default="test"): SelectSelector(
+                    SelectSelectorConfig(
+                        options=["test", "fast", "stop"],
+                        translation_key="test_action",
+                        mode=SelectSelectorMode.LIST,
+                    )
+                ),
+            }
+        )
+        return self.async_show_form(step_id="tests", data_schema=schema)
 
     # --- lights ------------------------------------------------------------
 

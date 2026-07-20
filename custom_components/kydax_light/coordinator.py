@@ -493,7 +493,43 @@ class KydaxEngine:
         self.active_preset = PRESET_NONE
         if fast:
             self._ensure_fast_timer()
+        _LOGGER.info(
+            "Zone %s: dim session started (%s) - %d light(s), %d step(s) every %s",
+            zone.name or zone.zone_id,
+            "test" if not mark_day else "evening",
+            len(progress),
+            self._zone_opt(zone, CONF_STEPS, DEFAULT_STEPS),
+            f"{TEST_STEP_SECONDS} s"
+            if fast
+            else f"{self._zone_opt(zone, CONF_STEP_MIN, DEFAULT_STEP_MIN)} min",
+        )
         self._dispatch()
+
+    def session_info(self, zone_id: str) -> dict | None:
+        """Progress of the zone's running dim session, for entity attributes."""
+        zone = self.get_zone(zone_id)
+        if zone is None or zone.session is None:
+            return None
+        session = zone.session
+        steps = self._zone_opt(zone, CONF_STEPS, DEFAULT_STEPS)
+        if session.step_seconds is not None:
+            interval = timedelta(seconds=session.step_seconds)
+        else:
+            interval = timedelta(
+                minutes=self._zone_opt(zone, CONF_STEP_MIN, DEFAULT_STEP_MIN)
+            )
+        remaining = max(
+            (0 if p.done else steps - p.step) for p in session.lights.values()
+        )
+        return {
+            "started": session.started.isoformat(),
+            "is_test": session.is_test,
+            "steps_total": steps,
+            "steps_remaining": remaining,
+            "next_step_at": (session.last_advance + interval).isoformat(),
+            "lights_done": sum(p.done for p in session.lights.values()),
+            "lights_total": len(session.lights),
+        }
 
     @callback
     def cancel_session(self, zone_id: str) -> None:
@@ -590,9 +626,23 @@ class KydaxEngine:
                     progress.step / steps
                 )
             await self._async_apply_pct(entity_id, pct)
+            _LOGGER.info(
+                "Zone %s: %s dimmed to %.0f%% (step %d/%d, %d call(s) left)",
+                zone.name or zone.zone_id,
+                entity_id,
+                pct,
+                progress.step,
+                steps,
+                max(0, steps - progress.step),
+            )
 
         if all(p.done for p in session.lights.values()):
             zone.session = None
+            _LOGGER.info(
+                "Zone %s: dim session finished after %d step(s)",
+                zone.name or zone.zone_id,
+                steps,
+            )
 
     @callback
     def _async_light_changed(self, event: Event[EventStateChangedData]) -> None:

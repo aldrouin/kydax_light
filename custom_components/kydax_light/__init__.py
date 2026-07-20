@@ -10,7 +10,12 @@ from homeassistant.helpers import entity_registry as er
 from .const import CONF_PAUSE_BUTTONS, CONF_ZONES
 from .coordinator import KydaxEngine
 
-PLATFORMS = [Platform.BUTTON, Platform.SELECT, Platform.SENSOR, Platform.SWITCH]
+# test controls became a Tests option-menu action in 0.5.0; these mark the
+# button entities older versions registered so they can be pruned
+_TEST_MARKER = "_test_"
+_STOP_TESTS_SUFFIX = "_stop_tests"
+
+PLATFORMS = [Platform.SELECT, Platform.SENSOR, Platform.SWITCH]
 
 type KydaxConfigEntry = ConfigEntry[KydaxEngine]
 
@@ -52,13 +57,13 @@ def _async_prune_stale_pause_entities(
     }
     zone_ids = [zone["id"] for zone in entry.options.get(CONF_ZONES, [])]
     valid_ids.update(f"{entry.entry_id}_gradation_{zid}" for zid in zone_ids)
-    for zid in (*zone_ids, "default"):
-        valid_ids.add(f"{entry.entry_id}_test_{zid}")
-        valid_ids.add(f"{entry.entry_id}_test_fast_{zid}")
+    # test buttons (_test_, _test_fast_, _stop_tests) are no longer created;
+    # they moved to the options Tests menu in 0.5.0 and are pruned here
     for reg_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
         if (
             "_pause_" in reg_entry.unique_id
             or "_gradation_" in reg_entry.unique_id
-            or "_test_" in reg_entry.unique_id
+            or _TEST_MARKER in reg_entry.unique_id
+            or reg_entry.unique_id.endswith(_STOP_TESTS_SUFFIX)
         ) and reg_entry.unique_id not in valid_ids:
             registry.async_remove(reg_entry.entity_id)

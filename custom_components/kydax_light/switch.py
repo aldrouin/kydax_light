@@ -140,8 +140,9 @@ class KydaxGradationSwitch(KydaxEntity, SwitchEntity):
             "illuminance": zone.lux,
             "reduction": zone.reduction,
         }
-        if zone.session is not None:
-            attrs["started"] = zone.session.started.isoformat()
+        info = self._engine.session_info(self._zone_id)
+        if info is not None and zone.session is not None:
+            attrs.update(info)
             attrs["progress"] = {
                 entity_id: {"step": p.step, "done": p.done}
                 for entity_id, p in zone.session.lights.items()
