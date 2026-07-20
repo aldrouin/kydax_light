@@ -31,10 +31,15 @@ async def async_setup_entry(
 
 
 class KydaxStopTestsButton(KydaxEntity, ButtonEntity):
-    """Stop every running test and restore pre-test brightness everywhere."""
+    """Stop every running test and restore pre-test brightness everywhere.
+
+    Disabled by default: listed on the integration's device page, enable it
+    there when testing.
+    """
 
     _attr_translation_key = "stop_tests"
     _attr_icon = "mdi:stop"
+    _attr_entity_registry_enabled_default = False
 
     def __init__(self, engine: KydaxEngine) -> None:
         super().__init__(engine)
@@ -45,7 +50,13 @@ class KydaxStopTestsButton(KydaxEntity, ButtonEntity):
 
 
 class KydaxTestButton(KydaxEntity, ButtonEntity):
-    """Start a test dim session for one zone."""
+    """Start a test dim session for one zone.
+
+    Disabled by default: listed on the integration's device page, enable it
+    there when testing.
+    """
+
+    _attr_entity_registry_enabled_default = False
 
     def __init__(
         self, engine: KydaxEngine, zone_id: str, zone_name: str, fast: bool
