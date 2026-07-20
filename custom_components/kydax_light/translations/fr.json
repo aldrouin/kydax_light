@@ -264,7 +264,7 @@
       "write_failed": "Impossible d'écrire le fichier — vérifiez le nom et les permissions"
     },
     "abort": {
-      "exported": "Configuration exportée. Téléchargez-la ici : {url}",
+      "exported": "Configuration exportée. Téléchargez-la ici : {url} (le fichier est aussi conservé dans config/www).",
       "lights_exported": "{count} lumières exportées. Téléchargez le fichier ici : {url}"
     }
   },

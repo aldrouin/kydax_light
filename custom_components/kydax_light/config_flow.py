@@ -17,6 +17,7 @@ from homeassistant.config_entries import (
 )
 from homeassistant.core import callback
 from homeassistant.components.file_upload import process_uploaded_file
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.helpers.selector import (
     BooleanSelector,
     EntitySelector,
@@ -177,8 +178,11 @@ PORTABLE_KEYS = (
 )
 DEFAULT_CONFIG_FILE = "kydax_light.json"
 DEFAULT_LIGHTS_FILE = "kydax_light_all_lights.json"
-# written under www/ so it can be downloaded from a browser at /local/<name>
+# exports live under www/ (also reachable at /local/... after a restart) and
+# are served immediately from our own route
 DOWNLOAD_DIR = "www"
+_STATIC_URL = "/kydax_light_files"
+_STATIC_REGISTERED = "kydax_light_static_registered"
 
 
 def _strip_comments(value: Any) -> Any:
@@ -424,7 +428,12 @@ class KydaxOptionsFlow(OptionsFlow):
         )
 
     async def _async_write_file(self, name: str, payload: dict) -> str:
-        """Write into www/ and return the browser path to download it."""
+        """Write the export and return a URL the browser can fetch now.
+
+        Home Assistant only serves /config/www at /local when that folder
+        already existed at startup, so a first export would 404 until a
+        restart. Registering our own static route avoids that entirely.
+        """
         name = name.strip() or DEFAULT_CONFIG_FILE
         directory = self.hass.config.path(DOWNLOAD_DIR)
         path = self.hass.config.path(DOWNLOAD_DIR, name)
@@ -435,7 +444,12 @@ class KydaxOptionsFlow(OptionsFlow):
                 json.dump(payload, handle, indent=2, ensure_ascii=False)
 
         await self.hass.async_add_executor_job(_write)
-        return f"/local/{name}"
+        if not self.hass.data.get(_STATIC_REGISTERED):
+            await self.hass.http.async_register_static_paths(
+                [StaticPathConfig(_STATIC_URL, directory, False)]
+            )
+            self.hass.data[_STATIC_REGISTERED] = True
+        return f"{_STATIC_URL}/{name}"
 
     async def async_step_export(
         self, user_input: dict[str, Any] | None = None

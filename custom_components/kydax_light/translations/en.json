@@ -264,8 +264,8 @@
       "write_failed": "Could not write the file - check the name and permissions"
     },
     "abort": {
-      "exported": "Configuration exported. Download it at: {url}",
-      "lights_exported": "{count} lights exported. Download the file at: {url}"
+      "exported": "Configuration exported. Download it here: {url} (the file is also kept in config/www).",
+      "lights_exported": "{count} lights exported. Download the file here: {url}"
     }
   },
   "selector": {
