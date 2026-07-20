@@ -54,7 +54,7 @@
           "zones": "Manage zones",
           "tests": "Tests",
           "backup": "Import / export",
-          "preset_names": "Preset names"
+          "preset_names": "Entity names"
         }
       },
       "tests": {
@@ -254,12 +254,20 @@
         }
       },
       "preset_names": {
-        "title": "Preset names",
-        "description": "Rename the preset switches. Leave a field empty to keep the default name.",
+        "title": "Entity names",
+        "description": "Rename the entities whose name comes from a translation. Leave a field empty to keep the default. {zone} is replaced by the zone name.",
         "data": {
-          "day": "Day",
-          "evening": "Evening",
-          "night": "Night"
+          "day": "Day preset switch",
+          "evening": "Evening preset switch",
+          "night": "Night preset switch",
+          "gradation": "Dimming switch",
+          "zone_gradation": "Zone dimming switches",
+          "auto_update": "Auto-update switch",
+          "illuminance": "Illuminance sensor",
+          "reduction": "Reduction sensor"
+        },
+        "data_description": {
+          "zone_gradation": "For example: Dimming {zone}"
         }
       }
     },

@@ -14,6 +14,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import KydaxConfigEntry
+from .const import custom_label
 from .coordinator import KydaxEngine
 from .entity import KydaxEntity
 
@@ -32,7 +33,6 @@ async def async_setup_entry(
 class KydaxIlluminanceSensor(KydaxEntity, SensorEntity):
     """Current outdoor illuminance from the configured source."""
 
-    _attr_translation_key = "illuminance"
     _attr_device_class = SensorDeviceClass.ILLUMINANCE
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_native_unit_of_measurement = LIGHT_LUX
@@ -40,6 +40,11 @@ class KydaxIlluminanceSensor(KydaxEntity, SensorEntity):
     def __init__(self, engine: KydaxEngine) -> None:
         super().__init__(engine)
         self._attr_unique_id = f"{engine.entry.entry_id}_illuminance"
+        custom = custom_label(engine.entry.options, "illuminance")
+        if custom:
+            self._attr_name = custom
+        else:
+            self._attr_translation_key = "illuminance"
 
     @property
     def available(self) -> bool:
@@ -57,13 +62,17 @@ class KydaxIlluminanceSensor(KydaxEntity, SensorEntity):
 class KydaxReductionSensor(KydaxEntity, SensorEntity):
     """Current reduction applied on top of the configured percentages."""
 
-    _attr_translation_key = "reduction"
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_icon = "mdi:brightness-4"
 
     def __init__(self, engine: KydaxEngine) -> None:
         super().__init__(engine)
         self._attr_unique_id = f"{engine.entry.entry_id}_reduction"
+        custom = custom_label(engine.entry.options, "reduction")
+        if custom:
+            self._attr_name = custom
+        else:
+            self._attr_translation_key = "reduction"
 
     @property
     def native_value(self) -> int:

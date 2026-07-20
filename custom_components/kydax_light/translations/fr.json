@@ -54,7 +54,7 @@
           "zones": "Gérer les zones",
           "tests": "Tests",
           "backup": "Importer / exporter",
-          "preset_names": "Noms des préréglages"
+          "preset_names": "Noms des entités"
         }
       },
       "tests": {
@@ -254,12 +254,20 @@
         }
       },
       "preset_names": {
-        "title": "Noms des préréglages",
-        "description": "Renommez les interrupteurs de préréglage. Laissez un champ vide pour conserver le nom par défaut.",
+        "title": "Noms des entités",
+        "description": "Renommez les entités dont le nom provient d'une traduction. Laissez un champ vide pour conserver le nom par défaut. {zone} est remplacé par le nom de la zone.",
         "data": {
-          "day": "Jour",
-          "evening": "Soir",
-          "night": "Nuit"
+          "day": "Interrupteur préréglage jour",
+          "evening": "Interrupteur préréglage soir",
+          "night": "Interrupteur préréglage nuit",
+          "gradation": "Interrupteur de gradation",
+          "zone_gradation": "Interrupteurs de gradation par zone",
+          "auto_update": "Interrupteur de mise à jour automatique",
+          "illuminance": "Capteur de luminosité",
+          "reduction": "Capteur de réduction"
+        },
+        "data_description": {
+          "zone_gradation": "Par exemple : Gradation {zone}"
         }
       }
     },

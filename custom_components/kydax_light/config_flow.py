@@ -68,9 +68,7 @@ from .const import (
     KEY_DAY,
     KEY_EVENING,
     KEY_NIGHT,
-    PRESET_DAY,
-    PRESET_EVENING,
-    PRESET_NIGHT,
+    LABEL_KEYS,
     SOURCE_LUX,
     SOURCE_WEATHER,
 )
@@ -455,18 +453,14 @@ class KydaxOptionsFlow(OptionsFlow):
         if user_input is not None:
             options = self._options
             options[CONF_PRESET_NAMES] = {
-                preset: (user_input.get(preset) or "").strip()
-                for preset in (PRESET_DAY, PRESET_EVENING, PRESET_NIGHT)
-                if (user_input.get(preset) or "").strip()
+                key: (user_input.get(key) or "").strip()
+                for key in LABEL_KEYS
+                if (user_input.get(key) or "").strip()
             }
             return self._save(options)
 
         schema = vol.Schema(
-            {
-                vol.Optional(PRESET_DAY): TextSelector(),
-                vol.Optional(PRESET_EVENING): TextSelector(),
-                vol.Optional(PRESET_NIGHT): TextSelector(),
-            }
+            {vol.Optional(key): TextSelector() for key in LABEL_KEYS}
         )
         return self.async_show_form(
             step_id="preset_names",

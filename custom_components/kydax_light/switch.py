@@ -13,7 +13,7 @@ from homeassistant.helpers.restore_state import RestoreEntity
 from . import KydaxConfigEntry
 from .const import (
     CONF_PAUSE_BUTTONS,
-    CONF_PRESET_NAMES,
+    custom_label,
     PRESET_DAY,
     PRESET_EVENING,
     PRESET_NIGHT,
@@ -62,7 +62,7 @@ class KydaxPresetSwitch(KydaxEntity, SwitchEntity, RestoreEntity):
         self._preset = preset
         self._attr_unique_id = f"{engine.entry.entry_id}_preset_{preset}"
         self._attr_icon = PRESET_ICONS[preset]
-        custom = (engine.entry.options.get(CONF_PRESET_NAMES) or {}).get(preset)
+        custom = custom_label(engine.entry.options, preset)
         if custom:
             self._attr_name = custom
         else:
@@ -94,13 +94,17 @@ class KydaxAutoUpdateSwitch(KydaxEntity, SwitchEntity, RestoreEntity):
     Releases marked [critical] install at that window regardless.
     """
 
-    _attr_translation_key = "auto_update"
     _attr_icon = "mdi:update"
     _attr_entity_category = EntityCategory.CONFIG
 
     def __init__(self, engine: KydaxEngine) -> None:
         super().__init__(engine)
         self._attr_unique_id = f"{engine.entry.entry_id}_auto_update"
+        custom = custom_label(engine.entry.options, "auto_update")
+        if custom:
+            self._attr_name = custom
+        else:
+            self._attr_translation_key = "auto_update"
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
@@ -172,11 +176,21 @@ class KydaxGradationSwitch(KydaxEntity, SwitchEntity):
         if zone_id == ZONE_DEFAULT:
             # keeps the pre-zones unique_id so history and dashboards survive
             self._attr_unique_id = f"{engine.entry.entry_id}_gradation"
-            self._attr_translation_key = "gradation"
+            custom = custom_label(engine.entry.options, "gradation")
+            if custom:
+                self._attr_name = custom
+            else:
+                self._attr_translation_key = "gradation"
         else:
             self._attr_unique_id = f"{engine.entry.entry_id}_gradation_{zone_id}"
-            self._attr_translation_key = "zone_gradation"
-            self._attr_translation_placeholders = {"zone": zone_name}
+            custom = custom_label(
+                engine.entry.options, "zone_gradation", zone=zone_name
+            )
+            if custom:
+                self._attr_name = custom
+            else:
+                self._attr_translation_key = "zone_gradation"
+                self._attr_translation_placeholders = {"zone": zone_name}
 
     @property
     def is_on(self) -> bool:

@@ -47,9 +47,31 @@ ZONE_DEFAULT = "default"
 # --- managed lights & pause buttons ---
 CONF_LIGHTS = "lights"  # {entity_id: {"day": int, "evening": int, "night": int}}
 CONF_PAUSE_BUTTONS = "pause_buttons"  # [{"id": str, "name": str, "all": bool, "lights": [entity_id]}]
-# optional custom names for the preset switches, e.g. {"day": "Midi"};
-# an empty value keeps the built-in translated name
+# optional custom names for the entities whose label comes from a
+# translation, e.g. {"day": "Midi", "gradation": "Gradation"}; an empty
+# value keeps the built-in translated name. {zone} is replaced by the zone.
 CONF_PRESET_NAMES = "preset_names"
+LABEL_KEYS = (
+    "day",
+    "evening",
+    "night",
+    "gradation",
+    "zone_gradation",
+    "auto_update",
+    "illuminance",
+    "reduction",
+)
+
+
+def custom_label(options: dict, key: str, **placeholders) -> str | None:
+    """A configured label with its placeholders filled in, if one is set."""
+    template = (options.get(CONF_PRESET_NAMES) or {}).get(key)
+    if not template:
+        return None
+    try:
+        return template.format(**placeholders)
+    except (KeyError, IndexError, ValueError):
+        return template
 
 KEY_DAY = "day"
 KEY_EVENING = "evening"
