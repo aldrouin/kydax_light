@@ -129,12 +129,17 @@ PCT_SCHEMA = vol.Schema(
 )
 
 
-def _all_light_entity_ids(hass) -> list[str]:
-    """Every light entity except light groups (managing both would double-command)."""
+def _all_light_entity_ids(hass, include_groups: bool = False) -> list[str]:
+    """Every light entity; light groups only when explicitly requested.
+
+    Groups are excluded by default because managing a group and its member
+    lights at the same time double-commands the same bulbs.
+    """
     return [
         state.entity_id
         for state in hass.states.async_all("light")
-        if not isinstance(state.attributes.get("entity_id"), (list, tuple))
+        if include_groups
+        or not isinstance(state.attributes.get("entity_id"), (list, tuple))
     ]
 
 
@@ -144,6 +149,7 @@ LIGHT_PICK_SCHEMA = vol.Schema(
             EntitySelectorConfig(domain="light", multiple=True)
         ),
         vol.Required("add_all", default=False): BooleanSelector(),
+        vol.Required("add_groups", default=False): BooleanSelector(),
     }
 )
 
@@ -203,7 +209,9 @@ class KydaxConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             selected = list(user_input.get(CONF_LIGHTS, []))
             if user_input.get("add_all"):
-                selected += _all_light_entity_ids(self.hass)
+                selected += _all_light_entity_ids(
+                    self.hass, include_groups=user_input.get("add_groups", False)
+                )
             lights = {
                 entity_id: {
                     KEY_DAY: DEFAULT_DAY,
@@ -380,7 +388,9 @@ class KydaxOptionsFlow(OptionsFlow):
             lights = dict(options.get(CONF_LIGHTS, {}))
             selected = list(user_input.get(CONF_LIGHTS, []))
             if user_input.get("add_all"):
-                selected += _all_light_entity_ids(self.hass)
+                selected += _all_light_entity_ids(
+                    self.hass, include_groups=user_input.get("add_groups", False)
+                )
             for entity_id in selected:
                 lights.setdefault(
                     entity_id,
