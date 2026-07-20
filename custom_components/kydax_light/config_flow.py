@@ -18,6 +18,7 @@ from homeassistant.config_entries import (
 from homeassistant.core import callback
 from homeassistant.components.file_upload import process_uploaded_file
 from homeassistant.components.http import StaticPathConfig
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.selector import (
     BooleanSelector,
     EntitySelector,
@@ -198,16 +199,34 @@ def _strip_comments(value: Any) -> Any:
     return value
 
 
-def _export_payload(hass, options: dict[str, Any]) -> dict[str, Any]:
+def _export_payload(
+    hass, options: dict[str, Any], entry_id: str | None = None
+) -> dict[str, Any]:
     """The portable configuration, annotated with the names behind the ids.
 
-    Everything prefixed with _ is a comment and is ignored on import.
+    Every managed light is named, and zones and pause buttons also carry the
+    friendly name of the entity they created. Everything prefixed with _ is
+    a comment and is ignored on import.
     """
 
     def _label(entity_id: str) -> str:
         state = hass.states.get(entity_id) if hass else None
         name = state.name if state else None
         return f"{name} ({entity_id})" if name else entity_id
+
+    entities: dict[str, str] = {}
+    if hass is not None and entry_id:
+        for reg_entry in er.async_entries_for_config_entry(
+            er.async_get(hass), entry_id
+        ):
+            state = hass.states.get(reg_entry.entity_id)
+            friendly = (
+                state.name
+                if state
+                else (reg_entry.name or reg_entry.original_name or reg_entry.entity_id)
+            )
+            suffix = reg_entry.unique_id.removeprefix(f"{entry_id}_")
+            entities[suffix] = f"{friendly} ({reg_entry.entity_id})"
 
     data: dict[str, Any] = {}
     for key in PORTABLE_KEYS:
@@ -222,13 +241,18 @@ def _export_payload(hass, options: dict[str, Any]) -> dict[str, Any]:
                 },
             }
         elif key in (CONF_ZONES, CONF_PAUSE_BUTTONS) and isinstance(value, list):
-            value = [
-                {
+            prefix = "gradation_" if key == CONF_ZONES else "pause_"
+            annotated = []
+            for item in value:
+                entry = {
                     **item,
                     "_lights": [_label(e) for e in item.get("lights", [])],
                 }
-                for item in value
-            ]
+                entity = entities.get(f"{prefix}{item.get('id')}")
+                if entity:
+                    entry["_entity"] = entity
+                annotated.append(entry)
+            value = annotated
         data[key] = value
     return {
         "_comment": (
@@ -459,7 +483,10 @@ class KydaxOptionsFlow(OptionsFlow):
         if user_input is not None:
             try:
                 url = await self._async_write_file(
-                    user_input["path"], _export_payload(self.hass, self._options)
+                    user_input["path"],
+                    _export_payload(
+                        self.hass, self._options, self.config_entry.entry_id
+                    ),
                 )
             except OSError:
                 errors["path"] = "write_failed"
