@@ -181,11 +181,58 @@ DEFAULT_LIGHTS_FILE = "kydax_light_all_lights.json"
 DOWNLOAD_DIR = "www"
 
 
-def _export_payload(options: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "kydax_light": {
-            key: options.get(key) for key in PORTABLE_KEYS if key in options
+def _strip_comments(value: Any) -> Any:
+    """Drop the readable annotations added on export (keys starting with _)."""
+    if isinstance(value, dict):
+        return {
+            key: _strip_comments(item)
+            for key, item in value.items()
+            if not key.startswith("_")
         }
+    if isinstance(value, list):
+        return [_strip_comments(item) for item in value]
+    return value
+
+
+def _export_payload(hass, options: dict[str, Any]) -> dict[str, Any]:
+    """The portable configuration, annotated with the names behind the ids.
+
+    Everything prefixed with _ is a comment and is ignored on import.
+    """
+
+    def _label(entity_id: str) -> str:
+        state = hass.states.get(entity_id) if hass else None
+        name = state.name if state else None
+        return f"{name} ({entity_id})" if name else entity_id
+
+    data: dict[str, Any] = {}
+    for key in PORTABLE_KEYS:
+        if key not in options:
+            continue
+        value = options[key]
+        if key == CONF_LIGHTS and isinstance(value, dict):
+            value = {
+                **value,
+                "_names": {
+                    entity_id: _label(entity_id) for entity_id in value
+                },
+            }
+        elif key in (CONF_ZONES, CONF_PAUSE_BUTTONS) and isinstance(value, list):
+            value = [
+                {
+                    **item,
+                    "_lights": [_label(e) for e in item.get("lights", [])],
+                }
+                for item in value
+            ]
+        data[key] = value
+    return {
+        "_comment": (
+            "Kydax Light configuration. Lines starting with _ are comments "
+            "and are ignored on import. Light source sensors are not "
+            "included, as they differ per installation."
+        ),
+        "kydax_light": data,
     }
 
 
@@ -398,7 +445,7 @@ class KydaxOptionsFlow(OptionsFlow):
         if user_input is not None:
             try:
                 url = await self._async_write_file(
-                    user_input["path"], _export_payload(self._options)
+                    user_input["path"], _export_payload(self.hass, self._options)
                 )
             except OSError:
                 errors["path"] = "write_failed"
@@ -464,7 +511,7 @@ class KydaxOptionsFlow(OptionsFlow):
             except (OSError, ValueError, KeyError):
                 errors["file"] = "invalid_file"
             else:
-                payload = (
+                payload = _strip_comments(
                     data.get("kydax_light", data) if isinstance(data, dict) else data
                 )
                 problem = _validate_payload(payload)
