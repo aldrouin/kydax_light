@@ -47,6 +47,9 @@ ZONE_DEFAULT = "default"
 # --- managed lights & pause buttons ---
 CONF_LIGHTS = "lights"  # {entity_id: {"day": int, "evening": int, "night": int}}
 CONF_PAUSE_BUTTONS = "pause_buttons"  # [{"id": str, "name": str, "all": bool, "lights": [entity_id]}]
+# optional custom names for the preset switches, e.g. {"day": "Midi"};
+# an empty value keeps the built-in translated name
+CONF_PRESET_NAMES = "preset_names"
 
 KEY_DAY = "day"
 KEY_EVENING = "evening"

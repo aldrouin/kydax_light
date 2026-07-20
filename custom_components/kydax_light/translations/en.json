@@ -53,7 +53,8 @@
           "schedule": "Schedule and reductions",
           "zones": "Manage zones",
           "tests": "Tests",
-          "backup": "Import / export"
+          "backup": "Import / export",
+          "preset_names": "Preset names"
         }
       },
       "tests": {
@@ -251,6 +252,15 @@
         "data": {
           "file": "File"
         }
+      },
+      "preset_names": {
+        "title": "Preset names",
+        "description": "Rename the preset switches. Leave a field empty to keep the default name.",
+        "data": {
+          "day": "Day",
+          "evening": "Evening",
+          "night": "Night"
+        }
       }
     },
     "error": {
@@ -286,13 +296,13 @@
   "entity": {
     "switch": {
       "preset_day": {
-        "name": "Day preset"
+        "name": "Day"
       },
       "preset_evening": {
-        "name": "Evening preset"
+        "name": "Evening"
       },
       "preset_night": {
-        "name": "Night preset"
+        "name": "Night"
       },
       "gradation": {
         "name": "Evening dimming"

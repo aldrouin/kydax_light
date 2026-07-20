@@ -43,6 +43,7 @@ from .const import (
     CONF_MID_PCT,
     CONF_OFFSET_MIN,
     CONF_PAUSE_BUTTONS,
+    CONF_PRESET_NAMES,
     CONF_SOURCE_MODE,
     CONF_START_LUX,
     CONF_STEP_MIN,
@@ -67,6 +68,9 @@ from .const import (
     KEY_DAY,
     KEY_EVENING,
     KEY_NIGHT,
+    PRESET_DAY,
+    PRESET_EVENING,
+    PRESET_NIGHT,
     SOURCE_LUX,
     SOURCE_WEATHER,
 )
@@ -436,9 +440,39 @@ class KydaxOptionsFlow(OptionsFlow):
                 "pause_buttons",
                 "source",
                 "schedule",
+                "preset_names",
                 "backup",
                 "tests",
             ],
+        )
+
+    # --- preset names ---------------------------------------------------------
+
+    async def async_step_preset_names(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Rename the Day / Evening / Night switches."""
+        if user_input is not None:
+            options = self._options
+            options[CONF_PRESET_NAMES] = {
+                preset: (user_input.get(preset) or "").strip()
+                for preset in (PRESET_DAY, PRESET_EVENING, PRESET_NIGHT)
+                if (user_input.get(preset) or "").strip()
+            }
+            return self._save(options)
+
+        schema = vol.Schema(
+            {
+                vol.Optional(PRESET_DAY): TextSelector(),
+                vol.Optional(PRESET_EVENING): TextSelector(),
+                vol.Optional(PRESET_NIGHT): TextSelector(),
+            }
+        )
+        return self.async_show_form(
+            step_id="preset_names",
+            data_schema=self.add_suggested_values_to_schema(
+                schema, self._options.get(CONF_PRESET_NAMES, {})
+            ),
         )
 
     # --- import / export ------------------------------------------------------

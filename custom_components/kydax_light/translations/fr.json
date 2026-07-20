@@ -53,7 +53,8 @@
           "schedule": "Horaire et réductions",
           "zones": "Gérer les zones",
           "tests": "Tests",
-          "backup": "Importer / exporter"
+          "backup": "Importer / exporter",
+          "preset_names": "Noms des préréglages"
         }
       },
       "tests": {
@@ -251,6 +252,15 @@
         "data": {
           "file": "Fichier"
         }
+      },
+      "preset_names": {
+        "title": "Noms des préréglages",
+        "description": "Renommez les interrupteurs de préréglage. Laissez un champ vide pour conserver le nom par défaut.",
+        "data": {
+          "day": "Jour",
+          "evening": "Soir",
+          "night": "Nuit"
+        }
       }
     },
     "error": {
@@ -286,13 +296,13 @@
   "entity": {
     "switch": {
       "preset_day": {
-        "name": "Préréglage jour"
+        "name": "Jour"
       },
       "preset_evening": {
-        "name": "Préréglage soir"
+        "name": "Soir"
       },
       "preset_night": {
-        "name": "Préréglage nuit"
+        "name": "Nuit"
       },
       "gradation": {
         "name": "Gradation du soir"
