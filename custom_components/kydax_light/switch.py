@@ -11,9 +11,22 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from . import KydaxConfigEntry
-from .const import CONF_PAUSE_BUTTONS, ZONE_DEFAULT
+from .const import (
+    CONF_PAUSE_BUTTONS,
+    PRESET_DAY,
+    PRESET_EVENING,
+    PRESET_NIGHT,
+    PRESET_NONE,
+    ZONE_DEFAULT,
+)
 from .coordinator import KydaxEngine
 from .entity import KydaxEntity
+
+PRESET_ICONS = {
+    PRESET_DAY: "mdi:white-balance-sunny",
+    PRESET_EVENING: "mdi:weather-sunset",
+    PRESET_NIGHT: "mdi:weather-night",
+}
 
 
 async def async_setup_entry(
@@ -21,7 +34,7 @@ async def async_setup_entry(
     entry: KydaxConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up one gradation switch per zone and one pause switch per button."""
+    """Set up gradation, pause, preset and auto-update switches."""
     engine = entry.runtime_data
     entities: list[SwitchEntity] = [
         KydaxGradationSwitch(engine, zone.zone_id, zone.name)
@@ -31,8 +44,43 @@ async def async_setup_entry(
         KydaxPauseSwitch(engine, button)
         for button in entry.options.get(CONF_PAUSE_BUTTONS, [])
     )
+    entities.extend(
+        KydaxPresetSwitch(engine, preset)
+        for preset in (PRESET_DAY, PRESET_EVENING, PRESET_NIGHT)
+    )
     entities.append(KydaxAutoUpdateSwitch(engine))
     async_add_entities(entities)
+
+
+class KydaxPresetSwitch(KydaxEntity, SwitchEntity, RestoreEntity):
+    """On when this preset is active. Turning it on applies the preset now;
+    turning the active one off returns to no preset."""
+
+    def __init__(self, engine: KydaxEngine, preset: str) -> None:
+        super().__init__(engine)
+        self._preset = preset
+        self._attr_unique_id = f"{engine.entry.entry_id}_preset_{preset}"
+        self._attr_translation_key = f"preset_{preset}"
+        self._attr_icon = PRESET_ICONS[preset]
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        last = await self.async_get_last_state()
+        if last is not None and last.state == STATE_ON:
+            self._engine.restore_preset(self._preset)
+
+    @property
+    def is_on(self) -> bool:
+        return self._engine.active_preset == self._preset
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        await self._engine.async_apply_preset(self._preset)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        if self.is_on:
+            await self._engine.async_apply_preset(PRESET_NONE)
+        else:
+            self.async_write_ha_state()
 
 
 class KydaxAutoUpdateSwitch(KydaxEntity, SwitchEntity, RestoreEntity):

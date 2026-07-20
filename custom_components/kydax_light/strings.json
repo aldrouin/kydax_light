@@ -244,18 +244,16 @@
     }
   },
   "entity": {
-    "select": {
-      "preset": {
-        "name": "Preset",
-        "state": {
-          "day": "Day",
-          "evening": "Evening",
-          "night": "Night",
-          "none": "None"
-        }
-      }
-    },
     "switch": {
+      "preset_day": {
+        "name": "Day preset"
+      },
+      "preset_evening": {
+        "name": "Evening preset"
+      },
+      "preset_night": {
+        "name": "Night preset"
+      },
       "gradation": {
         "name": "Evening dimming"
       },

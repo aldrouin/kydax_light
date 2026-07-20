@@ -244,18 +244,16 @@
     }
   },
   "entity": {
-    "select": {
-      "preset": {
-        "name": "Préréglage",
-        "state": {
-          "day": "Jour",
-          "evening": "Soir",
-          "night": "Nuit",
-          "none": "Aucun"
-        }
-      }
-    },
     "switch": {
+      "preset_day": {
+        "name": "Préréglage jour"
+      },
+      "preset_evening": {
+        "name": "Préréglage soir"
+      },
+      "preset_night": {
+        "name": "Préréglage nuit"
+      },
       "gradation": {
         "name": "Gradation du soir"
       },

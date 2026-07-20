@@ -15,7 +15,7 @@ from .coordinator import KydaxEngine
 _TEST_MARKER = "_test_"
 _STOP_TESTS_SUFFIX = "_stop_tests"
 
-PLATFORMS = [Platform.SELECT, Platform.SENSOR, Platform.SWITCH]
+PLATFORMS = [Platform.SENSOR, Platform.SWITCH]
 
 type KydaxConfigEntry = ConfigEntry[KydaxEngine]
 
@@ -57,9 +57,14 @@ def _async_prune_stale_pause_entities(
     }
     zone_ids = [zone["id"] for zone in entry.options.get(CONF_ZONES, [])]
     valid_ids.update(f"{entry.entry_id}_gradation_{zid}" for zid in zone_ids)
-    # test buttons (_test_, _test_fast_, _stop_tests) are no longer created;
-    # they moved to the options Tests menu in 0.5.0 and are pruned here
+    # test buttons (_test_, _test_fast_, _stop_tests) moved to the options
+    # Tests menu in 0.5.0; the preset select became per-preset toggles in
+    # 0.6.0 - all pruned here
+    old_preset_select = f"{entry.entry_id}_preset"
     for reg_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
+        if reg_entry.unique_id == old_preset_select and reg_entry.domain == "select":
+            registry.async_remove(reg_entry.entity_id)
+            continue
         if (
             "_pause_" in reg_entry.unique_id
             or "_gradation_" in reg_entry.unique_id
