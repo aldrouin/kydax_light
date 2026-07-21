@@ -165,10 +165,28 @@ class KydaxPauseSwitch(KydaxEntity, SwitchEntity, RestoreEntity):
         self._engine.set_button_paused(self._button["id"], False)
 
 
-class KydaxGradationSwitch(KydaxEntity, SwitchEntity):
-    """On while the zone's evening dim session runs; turn off to cancel it."""
+class KydaxGradationSwitch(KydaxEntity, SwitchEntity, RestoreEntity):
+    """On while the zone's evening dim session runs; turn off to cancel it.
+
+    A session in progress is restored after a restart so the dim carries on
+    from the step it had reached, instead of stopping half-way or starting
+    the whole ramp again.
+    """
 
     _attr_icon = "mdi:weather-sunset-down"
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        last = await self.async_get_last_state()
+        if last is None or last.state != STATE_ON:
+            return
+        if last.attributes.get("is_test"):
+            return  # test sessions are not worth resuming
+        self._engine.resume_session(
+            self._zone_id,
+            last.attributes.get("progress") or {},
+            last.attributes.get("started"),
+        )
 
     def __init__(self, engine: KydaxEngine, zone_id: str, zone_name: str) -> None:
         super().__init__(engine)
@@ -210,8 +228,14 @@ class KydaxGradationSwitch(KydaxEntity, SwitchEntity):
         info = self._engine.session_info(self._zone_id)
         if info is not None and zone.session is not None:
             attrs.update(info)
+            # start_pct is kept so the session can be picked back up from
+            # the same step if Home Assistant restarts mid-dim
             attrs["progress"] = {
-                entity_id: {"step": p.step, "done": p.done}
+                entity_id: {
+                    "step": p.step,
+                    "done": p.done,
+                    "start_pct": p.start_pct,
+                }
                 for entity_id, p in zone.session.lights.items()
             }
         return attrs

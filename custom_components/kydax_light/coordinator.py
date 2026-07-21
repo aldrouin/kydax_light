@@ -549,6 +549,54 @@ class KydaxEngine:
         }
 
     @callback
+    def resume_session(
+        self, zone_id: str, progress: dict, started: str | None
+    ) -> None:
+        """Pick a dim session back up after a restart.
+
+        Home Assistant restarting in the middle of the evening dim must not
+        leave the lights stranded half-way, nor start the ramp again from
+        the top: the session continues from the step it had reached.
+        """
+        zone = self.get_zone(zone_id)
+        if zone is None or zone.session is not None:
+            return
+
+        lights: dict[str, LightProgress] = {}
+        for entity_id, values in (progress or {}).items():
+            if entity_id not in zone.lights:
+                continue  # the zone was reconfigured meanwhile
+            try:
+                lights[entity_id] = LightProgress(
+                    start_pct=float(values["start_pct"]),
+                    step=int(values["step"]),
+                    done=bool(values["done"]),
+                )
+            except (KeyError, TypeError, ValueError):
+                continue
+        if not lights or all(p.done for p in lights.values()):
+            return
+
+        now = dt_util.now()
+        try:
+            began = dt_util.parse_datetime(started) or now
+        except (TypeError, ValueError):
+            began = now
+        zone.session = DimSession(started=began, last_advance=now, lights=lights)
+        # this evening is under way; the autostart must not fire as well
+        zone.last_session_date = now.date()
+        remaining = max(
+            self._zone_opt(zone, CONF_STEPS, DEFAULT_STEPS) - p.step
+            for p in lights.values()
+            if not p.done
+        )
+        _LOGGER.info(
+            "Zone %s: dim session resumed after restart, %d step(s) left",
+            zone.name or zone.zone_id,
+            remaining,
+        )
+
+    @callback
     def cancel_session(self, zone_id: str) -> None:
         zone = self.get_zone(zone_id)
         if zone is not None:
