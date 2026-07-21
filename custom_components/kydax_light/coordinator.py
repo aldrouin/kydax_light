@@ -173,6 +173,8 @@ class KydaxEngine:
 
         self.auto_update_enabled: bool = False
         self._last_auto_update_date: date | None = None
+        # the first tick only reads the world; it never commands a light
+        self._first_tick: bool = True
 
     # --- configuration accessors -------------------------------------------
 
@@ -275,6 +277,7 @@ class KydaxEngine:
             await self._async_advance_session(zone, now)
 
         await self._async_maybe_auto_update(now)
+        self._first_tick = False
         self._dispatch()
 
     # --- auto-update -------------------------------------------------------
@@ -434,18 +437,32 @@ class KydaxEngine:
         )
         scheduled = sunset - offset
 
-        if now >= scheduled:
-            await self.async_start_session(zone.zone_id, now)
-        elif (
+        early = (
             now >= sunset - window
             and zone.lux_below_since is not None
             and now - zone.lux_below_since >= timedelta(minutes=LUX_DEBOUNCE_MIN)
-        ):
+        )
+        if not (now >= scheduled or early):
+            return
+
+        if self._first_tick:
+            # Starting up (or reloading after a settings change) must never
+            # move the lights: they are already wherever the evening left
+            # them. Consider this evening handled and leave them alone.
+            zone.last_session_date = now.date()
+            _LOGGER.info(
+                "Zone %s: dim time already passed at startup, lights left "
+                "untouched",
+                zone.name or zone.zone_id,
+            )
+            return
+
+        if not (now >= scheduled):
             _LOGGER.debug(
                 "Zone %s: starting dim session early on low illuminance",
                 zone.zone_id,
             )
-            await self.async_start_session(zone.zone_id, now)
+        await self.async_start_session(zone.zone_id, now)
 
     async def async_start_session(
         self,
