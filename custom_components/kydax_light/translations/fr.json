@@ -39,7 +39,10 @@
       "weather_entity_required": "Une entité météo est requise pour ce mode"
     },
     "abort": {
-      "already_configured": "Kydax Light est déjà configuré"
+      "already_configured": "Kydax Light est déjà configuré",
+      "invalid_file": "La configuration importée est invalide",
+      "invalid_lights": "La liste de lumières importée est invalide",
+      "invalid_source": "La configuration de source de luminosité importée est invalide"
     }
   },
   "options": {

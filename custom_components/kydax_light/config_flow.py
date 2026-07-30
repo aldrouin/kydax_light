@@ -392,6 +392,35 @@ class KydaxConfigFlow(ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(step_id="lights", data_schema=LIGHT_PICK_SCHEMA)
 
+    async def async_step_import(self, import_data: dict[str, Any]) -> ConfigFlowResult:
+        """Programmatic setup (kydax_bootstrap): the portable export payload
+        plus the source keys the export deliberately leaves out."""
+        await self.async_set_unique_id(DOMAIN)
+        self._abort_if_unique_id_configured()
+        if not isinstance(import_data, dict):
+            return self.async_abort(reason="invalid_file")
+        payload = _strip_comments(import_data.get(DOMAIN, import_data))
+        if not isinstance(payload, dict):
+            return self.async_abort(reason="invalid_file")
+        problem = _validate_payload(payload)
+        if problem:
+            return self.async_abort(reason=problem)
+        mode = payload.get(CONF_SOURCE_MODE)
+        if mode not in (SOURCE_LUX, SOURCE_WEATHER) or _validate_source(payload):
+            return self.async_abort(reason="invalid_source")
+        options: dict[str, Any] = {
+            CONF_SOURCE_MODE: mode,
+            CONF_LIGHTS: {},
+            CONF_PAUSE_BUTTONS: [],
+        }
+        for key in (CONF_LUX_ENTITY, CONF_WEATHER_ENTITY):
+            if payload.get(key):
+                options[key] = payload[key]
+        for key in PORTABLE_KEYS:
+            if payload.get(key) is not None:
+                options[key] = payload[key]
+        return self.async_create_entry(title="Kydax Light", data={}, options=options)
+
     @staticmethod
     @callback
     def async_get_options_flow(config_entry: ConfigEntry) -> KydaxOptionsFlow:
