@@ -154,6 +154,11 @@ class ZoneState:
 class KydaxEngine:
     """Holds all runtime state and drives the managed lights."""
 
+    # Consumed by kydax_test (duck-typed): zones, current_lux, session_info,
+    # async_start_session, async_cancel_all_tests. Bump when their signatures
+    # or semantics change.
+    TEST_API_VERSION = 1
+
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         self.hass = hass
         self.entry = entry
@@ -474,16 +479,16 @@ class KydaxEngine:
         *,
         fast: bool = False,
         mark_day: bool = True,
-    ) -> None:
+    ) -> bool:
         """Start a dim session over the zone's lights that are currently on.
 
         Test sessions pass mark_day=False so the evening autostart still runs
         today, and fast=True to step every TEST_STEP_SECONDS instead of the
-        configured minutes.
+        configured minutes. Returns True when a session actually started.
         """
         zone = self.get_zone(zone_id)
         if zone is None:
-            return
+            return False
         now = now or dt_util.now()
         progress: dict[str, LightProgress] = {}
         for entity_id in zone.lights:
@@ -501,7 +506,7 @@ class KydaxEngine:
             zone.last_session_date = now.date()
         if not progress:
             _LOGGER.debug("Zone %s: no lights on, nothing to dim", zone.zone_id)
-            return
+            return False
 
         zone.session = DimSession(
             started=now,
@@ -524,6 +529,7 @@ class KydaxEngine:
             else f"{self._zone_opt(zone, CONF_STEP_MIN, DEFAULT_STEP_MIN)} min",
         )
         self._dispatch()
+        return True
 
     def session_info(self, zone_id: str) -> dict | None:
         """Progress of the zone's running dim session, for entity attributes."""
