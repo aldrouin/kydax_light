@@ -285,11 +285,14 @@ class KydaxEngine:
     def _find_update_entity(self) -> str | None:
         """The HACS update entity for this integration, if present."""
         for state in self.hass.states.async_all("update"):
-            if "kydax" in state.entity_id:
+            if "kydax_light" in state.entity_id:
                 return state.entity_id
         return None
 
     async def _async_maybe_auto_update(self, now: datetime) -> None:
+        if "kydax_bootstrap" in self.hass.config.components:
+            # kydax_bootstrap centralizes updates for the whole kydax family.
+            return
         if now.hour != AUTO_UPDATE_HOUR or now.minute >= AUTO_UPDATE_WINDOW_MIN:
             return
         if self._last_auto_update_date == now.date():
@@ -738,9 +741,8 @@ class KydaxEngine:
         for zone in self.zones:
             zone.session = None
         if preset != PRESET_NONE:
+            # Pause buttons freeze dim sessions only; presets always apply.
             for entity_id, conf in self.lights.items():
-                if self.is_light_paused(entity_id):
-                    continue
                 zone = self._zone_by_light.get(entity_id)
                 reduction = zone.reduction if zone else self.reduction_pct
                 pct = conf.get(preset, 0) * (1 - reduction / 100)
